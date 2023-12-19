@@ -102,8 +102,8 @@ export const queryAssociations = async (uuids) => {
           }
         
           FILTER(
-            ?uuid IN (${sparqlEscape(uuids.join(','))})
-          )
+            ?uuid IN (${uuids.map((el)=> (sparqlEscape(el))).join(',')})
+            )
         }
           ORDER BY (?vCode)
           `);
@@ -188,7 +188,7 @@ export const queryAssociationsLocations = async (uuids) => {
           ?VstructuredID generiek:lokaleIdentificator ?vCode .
         }
          FILTER(
-          ?uuid IN (${sparqlEscape(uuids.join(','))})
+          ?uuid IN (${uuids.map((el)=> (sparqlEscape(el))).join(',')})
         )
       }
 
@@ -283,7 +283,7 @@ export const queryAssociationsMembers = async (uuids) => {
           BIND(IF(STR(?siteName) != "Website", ?sitePage, "") AS ?social)
         }
         FILTER(
-          ?uuid IN (${sparqlEscape(uuids.join(','))})
+          ?uuid IN (${uuids.map((el)=> (sparqlEscape(el))).join(',')})
         )
       }
 
@@ -308,13 +308,13 @@ export const queryAssociationsId = async (query) => {
     const targetQuery = [];
     if(targetArray){
     if(targetArray.includes('-18')) {
-      targetQuery.push('(?minimumleeftijd <= 18')
+      targetQuery.push('(?minimumleeftijd <= 18)')
     }
     if(targetArray.includes('18+')) {
-      targetQuery.push('(?maximumleeftijd >= 18')
+      targetQuery.push('(?maximumleeftijd >= 18)')
     }
     if(targetArray.includes('65+')) {
-      targetQuery.push('(?maximumleeftijd >= 35')
+      targetQuery.push('(?maximumleeftijd >= 35)')
     }
   }
 
