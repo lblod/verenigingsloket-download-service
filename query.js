@@ -254,13 +254,11 @@ export const queryAssociationsMembers = async (uuids) => {
           ?VstructuredID generiek:lokaleIdentificator ?vCode .
         }
 
-        optional {
         ?membership a <http://www.w3.org/ns/org#Membership> ;
         org:organization ?vereniging ;
         org:member ?member .
         ?member foaf:givenName ?voornaam ;
         foaf:familyName ?achternaam .
-        }
 
         optional {
           ?member org:basedAt ?site .
