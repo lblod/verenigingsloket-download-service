@@ -45,7 +45,7 @@ export const queryAssociations = async (uuids) => {
     SELECT ?vCode ?naam ?type 
     (GROUP_CONCAT(DISTINCT ?activityName; separator=", ") as ?hoofdactiviteiten)
     ?beschrijving 
-    ?minimumleeftijd  ?maximumleeftijd ?koepelNaam ?startdatum  ?kboNummer 
+    ?minimumleeftijd  ?maximumleeftijd ?startdatum  ?kboNummer 
     ?straat ?huisnummer ?busnummer ?postcode ?gemeente ?land
      WHERE {
            ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
@@ -72,10 +72,6 @@ export const queryAssociations = async (uuids) => {
            optional{ 
             ?verengiging org:classification ?classification .
             ?classification skos:notation ?type .
-          }
-          optional{
-            ?vereniging org:memberOf ?koepel .
-            ?koepel skos:prefLabel ?koepelNaam .
           }
            optional{ 
             ?vereniging  verenigingen_ext:doelgroep ?doelgroep .
@@ -130,7 +126,7 @@ export const queryAssociationsLocations = async (uuids) => {
 
   SELECT ?vCode ?straat ?huisnummer ?busnummer ?postcode ?gemeente ?land ?naam
   ?type (GROUP_CONCAT(DISTINCT ?activityName; separator=", ") as ?hoofdactiviteiten)
-  ?beschrijving ?minimumleeftijd  ?maximumleeftijd ?koepelNaam ?startdatum  ?kboNummer 
+  ?beschrijving ?minimumleeftijd  ?maximumleeftijd ?startdatum  ?kboNummer 
    WHERE {
          ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
          skos:prefLabel ?naam ;
@@ -159,10 +155,6 @@ export const queryAssociationsLocations = async (uuids) => {
          optional{ 
           ?verengiging org:classification ?classification .
           ?classification skos:notation ?type .
-        }
-        optional{
-          ?vereniging org:memberOf ?koepel .
-          ?koepel skos:prefLabel ?koepelNaam .
         }
          optional{ 
           ?vereniging  verenigingen_ext:doelgroep ?doelgroep .
@@ -216,7 +208,12 @@ export const queryAssociationsMembers = async (uuids) => {
   PREFIX regorg: <http://www.w3.org/ns/regorg#>
 
 
-  SELECT ?vereniging
+  SELECT ?vCode ?voornaam ?achternaam ?email ?telefoonnummer 
+  (GROUP_CONCAT(DISTINCT ?website; separator="") AS ?websites)
+  (GROUP_CONCAT(DISTINCT ?social; separator="") AS ?socials)
+   ?naam
+  ?type (GROUP_CONCAT(DISTINCT ?activityName; separator=", ") as ?hoofdactiviteiten)
+  ?beschrijving ?minimumleeftijd  ?maximumleeftijd ?startdatum  ?kboNummer 
    WHERE {
          ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
          skos:prefLabel ?naam ;
@@ -232,10 +229,7 @@ export const queryAssociationsMembers = async (uuids) => {
           ?verengiging org:classification ?classification .
           ?classification skos:notation ?type .
         }
-        optional{
-          ?vereniging org:memberOf ?koepel .
-          ?koepel skos:prefLabel ?koepelNaam .
-        }
+
          optional{ 
           ?vereniging  verenigingen_ext:doelgroep ?doelgroep .
           ?doelgroep  verenigingen_ext:minimumleeftijd ?minimumleeftijd ;
@@ -260,13 +254,11 @@ export const queryAssociationsMembers = async (uuids) => {
           ?VstructuredID generiek:lokaleIdentificator ?vCode .
         }
 
-        optional {
         ?membership a <http://www.w3.org/ns/org#Membership> ;
         org:organization ?vereniging ;
         org:member ?member .
         ?member foaf:givenName ?voornaam ;
         foaf:familyName ?achternaam .
-        }
 
         optional {
           ?member org:basedAt ?site .
