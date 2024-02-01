@@ -42,7 +42,7 @@ export const queryAssociations = async (uuids) => {
     PREFIX regorg: <http://www.w3.org/ns/regorg#>
 
 
-    SELECT ?vCode ?naam ?type 
+    SELECT DISTINCT ?vCode ?naam ?type 
     (GROUP_CONCAT(DISTINCT ?activityName; separator=", ") as ?hoofdactiviteiten)
     ?beschrijving 
     ?minimumleeftijd  ?maximumleeftijd ?startdatum  ?kboNummer 
@@ -124,7 +124,7 @@ export const queryAssociationsLocations = async (uuids) => {
   PREFIX regorg: <http://www.w3.org/ns/regorg#>
 
 
-  SELECT ?vCode ?straat ?huisnummer ?busnummer ?postcode ?gemeente ?land ?naam
+  SELECT DISTINCT ?vCode ?straat ?huisnummer ?busnummer ?postcode ?gemeente ?land ?naam
   ?type (GROUP_CONCAT(DISTINCT ?activityName; separator=", ") as ?hoofdactiviteiten)
   ?beschrijving ?minimumleeftijd  ?maximumleeftijd ?startdatum  ?kboNummer 
    WHERE {
@@ -208,7 +208,7 @@ export const queryAssociationsMembers = async (uuids) => {
   PREFIX regorg: <http://www.w3.org/ns/regorg#>
 
 
-  SELECT ?vCode ?voornaam ?achternaam ?email ?telefoonnummer 
+  SELECT DISTINCT ?vCode ?voornaam ?achternaam ?email ?telefoonnummer 
   (GROUP_CONCAT(DISTINCT ?website; separator="") AS ?websites)
   (GROUP_CONCAT(DISTINCT ?social; separator="") AS ?socials)
    ?naam
