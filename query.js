@@ -70,7 +70,7 @@ export const queryAssociations = async (uuids) => {
            }
 
            optional{ 
-            ?verengiging org:classification ?classification .
+            ?vereniging org:classification ?classification .
             ?classification skos:notation ?type .
           }
            optional{ 
@@ -153,7 +153,7 @@ export const queryAssociationsLocations = async (uuids) => {
          }
          
          optional{ 
-          ?verengiging org:classification ?classification .
+          ?vereniging org:classification ?classification .
           ?classification skos:notation ?type .
         }
          optional{ 
@@ -226,7 +226,7 @@ export const queryAssociationsMembers = async (uuids) => {
          }
          
          optional{ 
-          ?verengiging org:classification ?classification .
+          ?vereniging org:classification ?classification .
           ?classification skos:notation ?type .
         }
 
@@ -353,7 +353,7 @@ export const queryAssociationsId = async (query) => {
          }
          
          optional{ 
-          ?verengiging org:classification ?classification .
+          ?vereniging org:classification ?classification .
           ?classification mu:uuid ?classificationUuid .
                 }
         optional {
@@ -431,3 +431,6 @@ export const queryAssociationsId = async (query) => {
     
 
 export default queryAssociations;
+
+
+   
