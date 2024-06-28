@@ -13,8 +13,7 @@ WHERE {
   }
 
  ?vereniging org:hasPrimarySite ?primarySite .
-      ?primarySite organisatie:bestaatUit ?address ;
-                   mu:uuid ?Puuid .
+      ?primarySite organisatie:bestaatUit ?address .
       OPTIONAL {
         ?address a <http://www.w3.org/ns/locn#Address> ;
                mu:uuid ?adUuid ;
@@ -23,7 +22,7 @@ WHERE {
                adres:land ?land ;
                adres:gemeentenaam ?gemeente .
         OPTIONAL {
-          ?address adres:Adresvoorstelling.busnummer ?adBusnummer .
+          ?address adres:Adresvoorstelling.busnummer ?busnummer .
         }
         OPTIONAL {
           ?address adres:Adresvoorstelling.huisnummer ?huisnummer .
