@@ -16,11 +16,13 @@ const createSheet = async (associations, locations, representatives) => {
         VCode: el.vCode,
         Naam: el.naam,
         Type: el.type,
-        Hoofdqctiviteiten: el.hoofdactiviteiten,
+        Hoofdactiviteiten: el.hoofdactiviteiten,
         Beschrijving: el.beschrijving,
         Minimumleeftijd: el.minimumleeftijd,
         Maximumleeftijd: el.maximumleeftijd,
-        Startdatum: el.startdatum,
+        Startdatum: el.startdatum
+          ? el.startdatum.split('-').reverse().join('-')
+          : null,
         KboNummer: el.kboNummer,
         Straat: el.straat,
         Huisnummer: el.huisnummer,
@@ -55,7 +57,9 @@ const createSheet = async (associations, locations, representatives) => {
           Beschrijving: el.beschrijving,
           Minimumleeftijd: el.minimumleeftijd,
           Maximumleeftijd: el.maximumleeftijd,
-          Startdatum: el.startdatum,
+          Startdatum: el.startdatum
+            ? el.startdatum.split('-').reverse().join('-')
+            : null,
           KboNummer: el.kboNummer
         }))
         .filter(
@@ -82,11 +86,13 @@ const createSheet = async (associations, locations, representatives) => {
         Socials: el.solcials,
         Naam: el.naam,
         Type: el.type,
-        Hoofdqctiviteiten: el.hoofdactiviteiten,
+        Hoofdactiviteiten: el.hoofdactiviteiten,
         Beschrijving: el.beschrijving,
         Minimumleeftijd: el.minimumleeftijd,
         Maximumleeftijd: el.maximumleeftijd,
-        Startdatum: el.startdatum,
+        Startdatum: el.startdatum
+          ? el.startdatum.split('-').reverse().join('-')
+          : null,
         KboNummer: el.kboNummer
       }))
       .filter(
