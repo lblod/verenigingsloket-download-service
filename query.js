@@ -34,27 +34,21 @@ export function parseResult (result) {
 
 export const queryAssociations = async associationIds => {
   if (!associationIds) return null
-  const escapedIds = JSON.parse(associationIds)
-    .map(id => sparqlEscape(id))
-    .join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${associations(escapedIds)}`)
   return parseResult(res)
 }
 
 export const queryLocations = async associationIds => {
   if (!associationIds) return null
-  const escapedIds = JSON.parse(associationIds)
-    .map(id => sparqlEscape(id))
-    .join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${locations(escapedIds)}`)
   return parseResult(res)
 }
 
 export const queryRepresentatives = async associationIds => {
   if (!associationIds) return null
-  const escapedIds = JSON.parse(associationIds)
-    .map(id => sparqlEscape(id))
-    .join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${representatives(escapedIds)}`)
   return parseResult(res)
 }
