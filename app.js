@@ -20,13 +20,18 @@ function splitArrayIntoChunks (array, chunkSize) {
 }
 
 app.post('/storeData', (req, res) => {
-  const { associationIds } = req.body
+  const { associationIds, adminUnitId } = req.body
   if (!associationIds) {
-    return res.status(400).send('Missing associationIds in request body')
+    return res.status(400).send('Missing association ids in request body')
+  }
+  if (!adminUnitId) {
+    return res
+      .status(400)
+      .send('Missing administrative unit id in request body')
   }
 
   const referenceId = new Date().getTime().toString()
-  tempStorage[referenceId] = associationIds
+  tempStorage[referenceId] = { adminUnitId, associationIds }
 
   setTimeout(() => delete tempStorage[referenceId], 10 * 60 * 1000)
 
@@ -39,19 +44,20 @@ app.get('/download', async function (req, res) {
     return res.status(400).send('Invalid or missing reference ID')
   }
 
-  const associationIds = tempStorage[ref]
+  const { adminUnitId, associationIds } = tempStorage[ref]
+  const graph = `https://mu.semte.ch/graphs/organizations/${adminUnitId}`
   delete tempStorage[ref]
 
-  const associationIdChunks = splitArrayIntoChunks(associationIds, 200)
+  const associationIdChunks = splitArrayIntoChunks(associationIds, 1000)
 
   let allAssociations = []
   let allLocations = []
   let allRepresentatives = []
 
   for (const chunk of associationIdChunks) {
-    const associations = await queryAssociations(chunk)
-    const locations = await queryLocations(chunk)
-    const representatives = await queryRepresentatives(chunk)
+    const associations = await queryAssociations(chunk, graph)
+    const locations = await queryLocations(chunk, graph)
+    const representatives = await queryRepresentatives(chunk, graph)
 
     if (associations && associations.length > 0) {
       allAssociations = allAssociations.concat(associations)
