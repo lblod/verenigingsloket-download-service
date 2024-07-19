@@ -28,7 +28,7 @@ async function processJob (referenceId) {
   console.log('Job is in proress')
   const { adminUnitId, associationIds } = tempStorage[referenceId]
   const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
-  const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
+  const chunkSize = parseInt(process.env.CHUNK_SIZE, 10) || 10
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
   let allAssociations = []
   let allLocations = []
@@ -37,13 +37,13 @@ async function processJob (referenceId) {
   try {
     for (const chunk of associationIdChunks) {
       const associations = await queryAssociations(chunk, graph)
-      const locations = await queryLocations(chunk, graph)
-      const representatives = await queryRepresentatives(chunk, graph)
+      // const locations = await queryLocations(chunk, graph)
+      // const representatives = await queryRepresentatives(chunk, graph)
 
       if (associations && associations.length > 0) {
         allAssociations = allAssociations.concat(associations)
-        allLocations = allLocations.concat(locations)
-        allRepresentatives = allRepresentatives.concat(representatives)
+        // allLocations = allLocations.concat(locations)
+        // allRepresentatives = allRepresentatives.concat(representatives)
       }
     }
 
@@ -53,9 +53,9 @@ async function processJob (referenceId) {
 
     const filePath = path.join('/tmp', `${referenceId}.xlsx`)
     const fileData = await createSheet(
-      allAssociations,
-      allLocations,
-      allRepresentatives
+      allAssociations
+      // allLocations,
+      // allRepresentatives
     )
     console.log(`File data length: ${fileData.length}`)
     fs.writeFileSync(filePath, fileData)
