@@ -8,6 +8,7 @@ const createSheet = async (
 ) => {
   const workbook = XLSX.utils.book_new()
   if (associations != null) {
+    console.log('Create associations sheet')
     const { worksheet: generalWorksheet, sheetName: generalSheetName } =
       addSheet(
         associations
@@ -42,6 +43,7 @@ const createSheet = async (
     XLSX.utils.book_append_sheet(workbook, generalWorksheet, generalSheetName)
   }
   if (locations != null) {
+    console.log('Create locations sheet')
     const { worksheet: locationWorksheet, sheetName: locationSheetName } =
       addSheet(
         locations
@@ -76,6 +78,7 @@ const createSheet = async (
     XLSX.utils.book_append_sheet(workbook, locationWorksheet, locationSheetName)
   }
   if (representatives != null) {
+    console.log('Create representatives sheet')
     const {
       worksheet: representativeWorksheet,
       sheetName: representativeSheetName

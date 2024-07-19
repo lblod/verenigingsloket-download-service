@@ -32,7 +32,7 @@ async function processJob (referenceId) {
 
   const { adminUnitId, associationIds } = job
   const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
-  const chunkSize = parseInt(process.env.CHUNK_SIZE, 1) || 1
+  const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
 
   let allAssociations = []
@@ -57,10 +57,19 @@ async function processJob (referenceId) {
     }
 
     const filePath = path.join('/tmp', `${referenceId}.xlsx`)
+
+    // Measure time taken by createSheet
+    const startTime = performance.now()
     const fileData = await createSheet(
       allAssociations,
       allLocations,
       allRepresentatives
+    )
+    const endTime = performance.now()
+
+    const duration = endTime - startTime
+    console.log(
+      `Time taken to create sheet: ${duration.toFixed(2)} milliseconds`
     )
 
     console.log(`File data length: ${fileData.length}`)
