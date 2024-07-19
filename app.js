@@ -22,51 +22,59 @@ function splitArrayIntoChunks (array, chunkSize) {
 }
 
 async function processJob (referenceId) {
-  if (!tempStorage[referenceId]) {
+  const job = tempStorage[referenceId]
+
+  if (!job) {
     throw new Error('Invalid reference ID')
   }
-  console.log('Job is in proress')
-  const { adminUnitId, associationIds } = tempStorage[referenceId]
+
+  console.log('Job is in progress')
+
+  const { adminUnitId, associationIds } = job
   const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
-  const chunkSize = parseInt(process.env.CHUNK_SIZE, 10) || 10
+  const chunkSize = parseInt(process.env.CHUNK_SIZE, 1) || 1
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
+
   let allAssociations = []
   let allLocations = []
   let allRepresentatives = []
 
   try {
     for (const chunk of associationIdChunks) {
-      const associations = await queryAssociations(chunk, graph)
-      // const locations = await queryLocations(chunk, graph)
-      // const representatives = await queryRepresentatives(chunk, graph)
+      const [associations, locations, representatives] = await Promise.all([
+        queryAssociations(chunk, graph),
+        queryLocations(chunk, graph),
+        queryRepresentatives(chunk, graph)
+      ])
 
-      if (associations && associations.length > 0) {
-        allAssociations = allAssociations.concat(associations)
-        // allLocations = allLocations.concat(locations)
-        // allRepresentatives = allRepresentatives.concat(representatives)
-      }
+      if (associations) allAssociations.push(...associations)
+      if (locations) allLocations.push(...locations)
+      if (representatives) allRepresentatives.push(...representatives)
     }
 
     if (allAssociations.length === 0) {
-      throw new Error('Associations not found or empty.')
+      throw new Error('No associations found.')
     }
 
     const filePath = path.join('/tmp', `${referenceId}.xlsx`)
     const fileData = await createSheet(
-      allAssociations
-      // allLocations,
-      // allRepresentatives
+      allAssociations,
+      allLocations,
+      allRepresentatives
     )
+
     console.log(`File data length: ${fileData.length}`)
-    fs.writeFileSync(filePath, fileData)
+    await fs.promises.writeFile(filePath, fileData)
+
     console.log(`File written to: ${filePath}`)
     console.log(`Job with ID ${referenceId} completed successfully`)
-    return (tempStorage[referenceId].filePath = filePath)
+
+    job.filePath = filePath
+    return filePath
   } catch (error) {
     console.error(
       `Error processing job with ID ${referenceId}: ${error.message}`
     )
-    delete tempStorage[referenceId]
   }
 }
 

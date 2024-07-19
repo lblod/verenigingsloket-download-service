@@ -6,13 +6,6 @@ const createSheet = async (
   locations = [],
   representatives = []
 ) => {
-  const currentDate = new Date()
-  const timestamp = currentDate
-    .toISOString()
-    .replace(/[-:]/g, '_')
-    .replace(/\.\d+/, '')
-  const fileName = `verenigingen_${timestamp}.xlsx`
-
   const workbook = XLSX.utils.book_new()
   if (associations != null) {
     const { worksheet: generalWorksheet, sheetName: generalSheetName } =
