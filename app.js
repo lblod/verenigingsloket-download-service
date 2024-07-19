@@ -137,9 +137,9 @@ app.get('/download', (req, res) => {
     if (err) {
       console.error(err)
     } else {
-      // fs.unlinkSync(filePath)
-      // delete tempStorage[ref]
-      // console.log(`File ${filePath} has been cleaned up`)
+      fs.unlinkSync(filePath)
+      delete tempStorage[ref]
+      console.log(`File ${filePath} has been cleaned up`)
     }
   })
 })
