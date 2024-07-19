@@ -1,5 +1,12 @@
 import XLSX from 'xlsx-js-style'
-import { SHA256 } from 'crypto-js'
+
+const deduplicate = data => {
+  const seen = new Set()
+  return data.filter(item => {
+    const key = JSON.stringify(item)
+    return !seen.has(key) && seen.add(key)
+  })
+}
 
 const createSheet = async (
   associations = [],
@@ -7,115 +14,85 @@ const createSheet = async (
   representatives = []
 ) => {
   const workbook = XLSX.utils.book_new()
-  if (associations != null) {
+
+  if (associations.length) {
     console.log('Create associations sheet')
-    const { worksheet: generalWorksheet, sheetName: generalSheetName } =
-      addSheet(
-        associations
-          .map(el => ({
-            VCode: el.vCode,
-            Naam: el.naam,
-            Type: el.type,
-            Hoofdactiviteiten: el.hoofdactiviteiten,
-            Beschrijving: el.beschrijving,
-            Minimumleeftijd: el.minimumleeftijd,
-            Maximumleeftijd: el.maximumleeftijd,
-            Startdatum: el.startdatum
-              ? el.startdatum.split('-').reverse().join('-')
-              : null,
-            KboNummer: el.kboNummer,
-            Straat: el.straat,
-            Huisnummer: el.huisnummer,
-            Busnummer: el.busnummer,
-            Postcode: el.postcode,
-            Gemeente: el.gemeente,
-            Land: el.land
-          }))
-          .filter(
-            (obj, index, self) =>
-              index !==
-              self.findIndex(
-                t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
-              )
-          ),
-        'Algemeen'
-      )
-    XLSX.utils.book_append_sheet(workbook, generalWorksheet, generalSheetName)
+    const data = deduplicate(
+      associations.map(el => ({
+        VCode: el.vCode,
+        Naam: el.naam,
+        Type: el.type,
+        Hoofdactiviteiten: el.hoofdactiviteiten,
+        Beschrijving: el.beschrijving,
+        Minimumleeftijd: el.minimumleeftijd,
+        Maximumleeftijd: el.maximumleeftijd,
+        Startdatum: el.startdatum
+          ? el.startdatum.split('-').reverse().join('-')
+          : null,
+        KboNummer: el.kboNummer,
+        Straat: el.straat,
+        Huisnummer: el.huisnummer,
+        Busnummer: el.busnummer,
+        Postcode: el.postcode,
+        Gemeente: el.gemeente,
+        Land: el.land
+      }))
+    )
+    const { worksheet, sheetName } = addSheet(data, 'Algemeen')
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   }
-  if (locations != null) {
+
+  if (locations.length) {
     console.log('Create locations sheet')
-    const { worksheet: locationWorksheet, sheetName: locationSheetName } =
-      addSheet(
-        locations
-          .map(el => ({
-            VCode: el.vCode,
-            Straat: el.straat,
-            Huisnummer: el.huisnummer,
-            Busnummer: el.busnummer,
-            Postcode: el.postcode,
-            Gemeente: el.gemeente,
-            Land: el.land,
-            Naam: el.naam,
-            Type: el.type,
-            Hoofdactiviteiten: el.hoofdactiviteiten,
-            Beschrijving: el.beschrijving,
-            Minimumleeftijd: el.minimumleeftijd,
-            Maximumleeftijd: el.maximumleeftijd,
-            Startdatum: el.startdatum
-              ? el.startdatum.split('-').reverse().join('-')
-              : null,
-            KboNummer: el.kboNummer
-          }))
-          .filter(
-            (obj, index, self) =>
-              index !==
-              self.findIndex(
-                t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
-              )
-          ),
-        'Locaties'
-      )
-    XLSX.utils.book_append_sheet(workbook, locationWorksheet, locationSheetName)
+    const data = deduplicate(
+      locations.map(el => ({
+        VCode: el.vCode,
+        Straat: el.straat,
+        Huisnummer: el.huisnummer,
+        Busnummer: el.busnummer,
+        Postcode: el.postcode,
+        Gemeente: el.gemeente,
+        Land: el.land,
+        Naam: el.naam,
+        Type: el.type,
+        Hoofdactiviteiten: el.hoofdactiviteiten,
+        Beschrijving: el.beschrijving,
+        Minimumleeftijd: el.minimumleeftijd,
+        Maximumleeftijd: el.maximumleeftijd,
+        Startdatum: el.startdatum
+          ? el.startdatum.split('-').reverse().join('-')
+          : null,
+        KboNummer: el.kboNummer
+      }))
+    )
+    const { worksheet, sheetName } = addSheet(data, 'Locaties')
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   }
-  if (representatives != null) {
+
+  if (representatives.length) {
     console.log('Create representatives sheet')
-    const {
-      worksheet: representativeWorksheet,
-      sheetName: representativeSheetName
-    } = addSheet(
-      representatives
-        .map(el => ({
-          VCode: el.vCode,
-          Voornaam: el.voornaam,
-          Achternaam: el.achternaam,
-          Email: el.email,
-          Websites: el.websites,
-          Socials: el.solcials,
-          Naam: el.naam,
-          Type: el.type,
-          Hoofdactiviteiten: el.hoofdactiviteiten,
-          Beschrijving: el.beschrijving,
-          Minimumleeftijd: el.minimumleeftijd,
-          Maximumleeftijd: el.maximumleeftijd,
-          Startdatum: el.startdatum
-            ? el.startdatum.split('-').reverse().join('-')
-            : null,
-          KboNummer: el.kboNummer
-        }))
-        .filter(
-          (obj, index, self) =>
-            index !==
-            self.findIndex(
-              t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
-            )
-        ),
-      'Vertegenwoordigers'
+    const data = deduplicate(
+      representatives.map(el => ({
+        VCode: el.vCode,
+        Voornaam: el.voornaam,
+        Achternaam: el.achternaam,
+        Email: el.email,
+        Websites: el.websites,
+        Socials: el.solcials,
+        Naam: el.naam,
+        Type: el.type,
+        Hoofdactiviteiten: el.hoofdactiviteiten,
+        Beschrijving: el.beschrijving,
+        Minimumleeftijd: el.minimumleeftijd,
+        Maximumleeftijd: el.maximumleeftijd,
+        Startdatum: el.startdatum
+          ? el.startdatum.split('-').reverse().join('-')
+          : null,
+        KboNummer: el.kboNummer
+      }))
     )
-    XLSX.utils.book_append_sheet(
-      workbook,
-      representativeWorksheet,
-      representativeSheetName
-    )
+    const { worksheet, sheetName } = addSheet(data, 'Vertegenwoordigers')
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   }
 
   const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
@@ -125,7 +102,8 @@ const createSheet = async (
 export const addSheet = (data, sheetName) => {
   const style = { font: { sz: 14, bold: true } }
   const rowStyle = { rows: [], width: [] }
-  if (data && data.length > 0) {
+
+  if (data.length) {
     const keys = Object.keys(data[0])
     keys.forEach(key => {
       if (key) {
@@ -141,4 +119,5 @@ export const addSheet = (data, sheetName) => {
 
   return { worksheet, sheetName }
 }
+
 export default createSheet
