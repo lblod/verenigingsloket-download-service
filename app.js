@@ -28,7 +28,8 @@ async function processJob (referenceId) {
   console.log('Job is in proress')
   const { adminUnitId, associationIds } = tempStorage[referenceId]
   const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
-  const associationIdChunks = splitArrayIntoChunks(associationIds, 300)
+  const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
+  const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
   let allAssociations = []
   let allLocations = []
   let allRepresentatives = []
