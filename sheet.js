@@ -1,7 +1,11 @@
 import XLSX from 'xlsx-js-style'
 import { SHA256 } from 'crypto-js'
 
-const createSheet = async (associations, locations, representatives) => {
+const createSheet = async (
+  associations = [],
+  locations = [],
+  representatives = []
+) => {
   const currentDate = new Date()
   const timestamp = currentDate
     .toISOString()
@@ -10,47 +14,87 @@ const createSheet = async (associations, locations, representatives) => {
   const fileName = `verenigingen_${timestamp}.xlsx`
 
   const workbook = XLSX.utils.book_new()
-  const { worksheet: generalWorksheet, sheetName: generalSheetName } = addSheet(
-    associations
-      .map(el => ({
-        VCode: el.vCode,
-        Naam: el.naam,
-        Type: el.type,
-        Hoofdactiviteiten: el.hoofdactiviteiten,
-        Beschrijving: el.beschrijving,
-        Minimumleeftijd: el.minimumleeftijd,
-        Maximumleeftijd: el.maximumleeftijd,
-        Startdatum: el.startdatum
-          ? el.startdatum.split('-').reverse().join('-')
-          : null,
-        KboNummer: el.kboNummer,
-        Straat: el.straat,
-        Huisnummer: el.huisnummer,
-        Busnummer: el.busnummer,
-        Postcode: el.postcode,
-        Gemeente: el.gemeente,
-        Land: el.land
-      }))
-      .filter(
-        (obj, index, self) =>
-          index !==
-          self.findIndex(
-            t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
-          )
-      ),
-    'Algemeen'
-  )
-  const { worksheet: locationWorksheet, sheetName: locationSheetName } =
-    addSheet(
-      locations
+  if (associations != null) {
+    const { worksheet: generalWorksheet, sheetName: generalSheetName } =
+      addSheet(
+        associations
+          .map(el => ({
+            VCode: el.vCode,
+            Naam: el.naam,
+            Type: el.type,
+            Hoofdactiviteiten: el.hoofdactiviteiten,
+            Beschrijving: el.beschrijving,
+            Minimumleeftijd: el.minimumleeftijd,
+            Maximumleeftijd: el.maximumleeftijd,
+            Startdatum: el.startdatum
+              ? el.startdatum.split('-').reverse().join('-')
+              : null,
+            KboNummer: el.kboNummer,
+            Straat: el.straat,
+            Huisnummer: el.huisnummer,
+            Busnummer: el.busnummer,
+            Postcode: el.postcode,
+            Gemeente: el.gemeente,
+            Land: el.land
+          }))
+          .filter(
+            (obj, index, self) =>
+              index !==
+              self.findIndex(
+                t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
+              )
+          ),
+        'Algemeen'
+      )
+    XLSX.utils.book_append_sheet(workbook, generalWorksheet, generalSheetName)
+  }
+  if (locations != null) {
+    const { worksheet: locationWorksheet, sheetName: locationSheetName } =
+      addSheet(
+        locations
+          .map(el => ({
+            VCode: el.vCode,
+            Straat: el.straat,
+            Huisnummer: el.huisnummer,
+            Busnummer: el.busnummer,
+            Postcode: el.postcode,
+            Gemeente: el.gemeente,
+            Land: el.land,
+            Naam: el.naam,
+            Type: el.type,
+            Hoofdactiviteiten: el.hoofdactiviteiten,
+            Beschrijving: el.beschrijving,
+            Minimumleeftijd: el.minimumleeftijd,
+            Maximumleeftijd: el.maximumleeftijd,
+            Startdatum: el.startdatum
+              ? el.startdatum.split('-').reverse().join('-')
+              : null,
+            KboNummer: el.kboNummer
+          }))
+          .filter(
+            (obj, index, self) =>
+              index !==
+              self.findIndex(
+                t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
+              )
+          ),
+        'Locaties'
+      )
+    XLSX.utils.book_append_sheet(workbook, locationWorksheet, locationSheetName)
+  }
+  if (representatives != null) {
+    const {
+      worksheet: representativeWorksheet,
+      sheetName: representativeSheetName
+    } = addSheet(
+      representatives
         .map(el => ({
           VCode: el.vCode,
-          Straat: el.straat,
-          Huisnummer: el.huisnummer,
-          Busnummer: el.busnummer,
-          Postcode: el.postcode,
-          Gemeente: el.gemeente,
-          Land: el.land,
+          Voornaam: el.voornaam,
+          Achternaam: el.achternaam,
+          Email: el.email,
+          Websites: el.websites,
+          Socials: el.solcials,
           Naam: el.naam,
           Type: el.type,
           Hoofdactiviteiten: el.hoofdactiviteiten,
@@ -69,49 +113,15 @@ const createSheet = async (associations, locations, representatives) => {
               t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
             )
         ),
-      'Locaties'
+      'Vertegenwoordigers'
     )
+    XLSX.utils.book_append_sheet(
+      workbook,
+      representativeWorksheet,
+      representativeSheetName
+    )
+  }
 
-  const {
-    worksheet: representativeWorksheet,
-    sheetName: representativeSheetName
-  } = addSheet(
-    representatives
-      .map(el => ({
-        VCode: el.vCode,
-        Voornaam: el.voornaam,
-        Achternaam: el.achternaam,
-        Email: el.email,
-        Websites: el.websites,
-        Socials: el.solcials,
-        Naam: el.naam,
-        Type: el.type,
-        Hoofdactiviteiten: el.hoofdactiviteiten,
-        Beschrijving: el.beschrijving,
-        Minimumleeftijd: el.minimumleeftijd,
-        Maximumleeftijd: el.maximumleeftijd,
-        Startdatum: el.startdatum
-          ? el.startdatum.split('-').reverse().join('-')
-          : null,
-        KboNummer: el.kboNummer
-      }))
-      .filter(
-        (obj, index, self) =>
-          index !==
-          self.findIndex(
-            t => SHA256(JSON.stringify(t)) === SHA256(JSON.stringify(obj))
-          )
-      ),
-    'Vertegenwoordigers'
-  )
-
-  XLSX.utils.book_append_sheet(workbook, generalWorksheet, generalSheetName)
-  XLSX.utils.book_append_sheet(workbook, locationWorksheet, locationSheetName)
-  XLSX.utils.book_append_sheet(
-    workbook,
-    representativeWorksheet,
-    representativeSheetName
-  )
   const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
   return fileBuffer
 }
