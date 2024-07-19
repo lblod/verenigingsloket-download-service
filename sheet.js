@@ -112,8 +112,8 @@ const createSheet = async (associations, locations, representatives) => {
     representativeWorksheet,
     representativeSheetName
   )
-  await XLSX.writeFile(workbook, fileName)
-  return fileName
+  const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return fileBuffer
 }
 
 export const addSheet = (data, sheetName) => {
