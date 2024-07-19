@@ -45,7 +45,7 @@ app.get('/download', async function (req, res) {
   }
 
   const { adminUnitId, associationIds } = tempStorage[ref]
-  const graph = `https://mu.semte.ch/graphs/organizations/${adminUnitId}`
+  const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
   delete tempStorage[ref]
 
   const associationIdChunks = splitArrayIntoChunks(associationIds, 300)
