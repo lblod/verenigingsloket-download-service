@@ -5,8 +5,8 @@ SELECT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", "
 WHERE { GRAPH <${graph}> {
     VALUES ?uuid {  ${escapedIds}  }
     ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
-                skos:prefLabel ?naam ;
-                mu:uuid ?uuid .
+      mu:uuid ?uuid .
+    OPTIONAL { ?vereniging skos:prefLabel ?naam . }
     OPTIONAL {
       ?vereniging dcterms:description ?beschrijving .
     }
@@ -18,14 +18,12 @@ WHERE { GRAPH <${graph}> {
       ?vereniging ?e ?site .
       ?site a org:Site ;
             organisatie:bestaatUit ?address .
-      ?address locn:thoroughfare ?straat ;
-              adres:Adresvoorstelling.huisnummer ?huisnummer ;
-              locn:postCode ?postcode ;
-              adres:gemeentenaam ?gemeente ;
-              adres:land ?land .
-      OPTIONAL {
-        ?address adres:Adresvoorstelling.busnummer ?busnummer .
-      }
+      OPTIONAL { ?address locn:thoroughfare ?straat . }
+      OPTIONAL { ?address adres:Adresvoorstelling.huisnummer   ?huisnummer . }
+      OPTIONAL { ?address locn:postCode ?postcode . }
+      OPTIONAL { ?address adres:gemeentenaam ?gemeente . }
+      OPTIONAL { ?address adres:land ?land . }
+      OPTIONAL { ?address adres:Adresvoorstelling.busnummer ?busnummer . }
     }
     OPTIONAL {
       ?vereniging reorg:orgActivity ?activity .
