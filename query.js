@@ -1,4 +1,4 @@
-import { query as muQuery, sparqlEscape } from 'mu'
+import { query as muQuery, sparqlEscapeString } from 'mu'
 import { PREFIX, associations, locations, representatives } from './queries'
 
 /**
@@ -34,21 +34,21 @@ export function parseResult (result) {
 
 export const queryAssociations = async (associationIds, graph) => {
   if (!associationIds) return null
-  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${associations(escapedIds, graph)}`)
   return parseResult(res)
 }
 
 export const queryLocations = async (associationIds, graph) => {
   if (!associationIds) return null
-  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${locations(escapedIds, graph)}`)
   return parseResult(res)
 }
 
 export const queryRepresentatives = async (associationIds, graph) => {
   if (!associationIds) return null
-  const escapedIds = associationIds.map(id => sparqlEscape(id)).join(' ')
+  const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
   const res = await muQuery(`${PREFIX} ${representatives(escapedIds, graph)}`)
   return parseResult(res)
 }
