@@ -30,8 +30,8 @@ async function processJob (referenceId) {
 
   console.log('Job is in progress')
 
-  const { adminUnitId, associationIds } = job
-  const graph = `http://mu.semte.ch/graphs/organizations/${adminUnitId}`
+  const { associationIds } = job
+  const graph = `http://mu.semte.ch/graphs/organizations`
   const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
 
@@ -88,18 +88,13 @@ async function processJob (referenceId) {
 }
 
 app.post('/storeData', (req, res) => {
-  const { associationIds, adminUnitId } = req.body
+  const { associationIds } = req.body
   if (!associationIds) {
     return res.status(400).send('Missing association ids in request body')
   }
-  if (!adminUnitId) {
-    return res
-      .status(400)
-      .send('Missing administrative unit id in request body')
-  }
 
   const referenceId = new Date().getTime().toString()
-  tempStorage[referenceId] = { adminUnitId, associationIds }
+  tempStorage[referenceId] = { associationIds }
   const date = new Date(Date.now() + 1000)
   schedule.scheduleJob(date, async () => {
     try {
