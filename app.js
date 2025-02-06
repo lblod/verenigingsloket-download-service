@@ -1,9 +1,16 @@
-import { app } from 'mu'
+import { app, uuid } from 'mu'
+import { SHARE_FOLDER,
+         SOURCE_GRAPH,
+         CRON_PATTERN_SPREADSHEET_JOB
+       } from './env-config';
 import {
+  getAllAssociations,
   queryAssociations,
   queryLocations,
-  queryRepresentatives
+  queryRepresentatives,
+  writeFileToStore,
 } from './query'
+
 import createSheet from './sheet'
 import bodyParser from 'body-parser'
 import fs from 'fs'
@@ -11,7 +18,6 @@ import path from 'path'
 import schedule from 'node-schedule'
 
 app.use(bodyParser.json())
-const tempStorage = {}
 
 function splitArrayIntoChunks (array, chunkSize) {
   const chunks = []
@@ -21,16 +27,7 @@ function splitArrayIntoChunks (array, chunkSize) {
   return chunks
 }
 
-async function processJob (referenceId) {
-  const job = tempStorage[referenceId]
-
-  if (!job) {
-    throw new Error('Invalid reference ID')
-  }
-
-  console.log('Job is in progress')
-
-  const { associationIds } = job
+async function createSpreadSheet (associationIds) {
   const graph = `http://mu.semte.ch/graphs/organizations`
   const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
@@ -39,120 +36,87 @@ async function processJob (referenceId) {
   let allLocations = []
   let allRepresentatives = []
 
-  try {
-    for (const chunk of associationIdChunks) {
-      const [associations, locations, representatives] = await Promise.all([
-        queryAssociations(chunk, graph),
-        queryLocations(chunk, graph),
-        queryRepresentatives(chunk, graph)
-      ])
+  for (const chunk of associationIdChunks) {
+    const [associations, locations, representatives] = await Promise.all([
+      queryAssociations(chunk, graph),
+      queryLocations(chunk, graph),
+      queryRepresentatives(chunk, graph)
+    ])
 
-      if (associations) allAssociations.push(...associations)
-      if (locations) allLocations.push(...locations)
-      if (representatives) allRepresentatives.push(...representatives)
-    }
-
-    if (allAssociations.length === 0) {
-      throw new Error('No associations found.')
-    }
-
-    const filePath = path.join('/tmp', `${referenceId}.xlsx`)
-
-    // Measure time taken by createSheet
-    const startTime = performance.now()
-    const fileData = await createSheet(
-      allAssociations,
-      allLocations,
-      allRepresentatives
-    )
-    const endTime = performance.now()
-
-    const duration = endTime - startTime
-    console.log(
-      `Time taken to create sheet: ${duration.toFixed(2)} milliseconds`
-    )
-
-    console.log(`File data length: ${fileData.length}`)
-    await fs.promises.writeFile(filePath, fileData)
-
-    console.log(`File written to: ${filePath}`)
-    console.log(`Job with ID ${referenceId} completed successfully`)
-
-    job.filePath = filePath
-    return filePath
-  } catch (error) {
-    console.error(
-      `Error processing job with ID ${referenceId}: ${error.message}`
-    )
+    if (associations) allAssociations.push(...associations)
+    if (locations) allLocations.push(...locations)
+    if (representatives) allRepresentatives.push(...representatives)
   }
+
+  if (allAssociations.length === 0) {
+    throw new Error('No associations found.');
+  }
+
+  const fileName = `associations-export-${uuid()}.xlsx`;
+  const filePath = path.join(SHARE_FOLDER, fileName);
+
+  // Measure time taken by createSheet
+  const startTime = performance.now()
+  const fileData = await createSheet(
+    allAssociations,
+    allLocations,
+    allRepresentatives
+  );
+  const endTime = performance.now();
+
+  const duration = endTime - startTime
+  console.log(
+    `Time taken to create sheet: ${duration.toFixed(2)} milliseconds`
+  );
+
+  console.log(`File data length: ${fileData.length}`);
+  await fs.promises.writeFile(filePath, fileData);
+
+  console.log(`File written to: ${filePath}`);
+
+  //TODO: cleanup/deprecate previous
+
+  //store meta in DB
+  const fileUri = await writeFileToStore(fileName, filePath);
+  console.log(`File stored in DB with URI: ${fileUri}`);
+  
+  return filePath
 }
 
-app.post('/storeData', (req, res) => {
-  const { associationIds } = req.body
-  if (!associationIds) {
-    return res.status(400).send('Missing association ids in request body')
+schedule.scheduleJob(CRON_PATTERN_SPREADSHEET_JOB, async function() {
+  const timestamp = new Date().toISOString();
+  console.log(`Create spreadsheet job at ${timestamp}`);
+  const graph = SOURCE_GRAPH;
+  try {
+    const associations = await getAllAssociations(graph);
+    const associationIds = associations.map(a => a.uuid);
+    await createSpreadSheet(associationIds);
   }
+  catch(error){
+    console.error(`Error for job created at ${timestamp}`);
+    console.error(`Error details: ${error.message}`);
+    console.error(`Error details: ${error.stack}`);
+  }
+});
 
-  const referenceId = new Date().getTime().toString()
-  tempStorage[referenceId] = { associationIds }
-  const date = new Date(Date.now() + 1000)
-  schedule.scheduleJob(date, async () => {
-    try {
-      console.log('start process job')
-      await processJob(referenceId)
-    } catch (error) {
-      console.error(
-        `Error processing job with ID ${referenceId}: ${error.message}`
-      )
+/*****
+ * DEBUG ENDPOINTS.
+ * Do NOT expose publicly
+ * curl -X POST http://localhost/jobs?associationIds=123
+ *****/
+app.post('/jobs', async function (req, res) {
+  const graph = SOURCE_GRAPH;
+  try {
+    let associationIds = req.query?.associationIds?.split(',') || [];
+    if(associationIds.length <= 0 ) {
+      const associations = await getAllAssociations(graph);
+      associationIds = associations.map(a => a.uuid);
     }
-  })
-
-  setTimeout(() => {
-    if (tempStorage[referenceId] && !tempStorage[referenceId].filePath) {
-      delete tempStorage[referenceId]
-      console.log(
-        `Job with ID ${referenceId} has been cleaned up after timeout`
-      )
-    }
-  }, 10 * 60 * 1000)
-
-  res.json({ referenceId })
-})
-
-app.get('/status', (req, res) => {
-  const { jobId } = req.query
-
-  if (!tempStorage[jobId]) {
-    return res.status(404).send('Job not found')
+    await createSpreadSheet(associationIds);
+    res.status(201).end();
   }
-
-  if (tempStorage[jobId].filePath) {
-    console.log(`Job with ID ${jobId} is completed`)
-    return res.json({ complete: true, referenceId: jobId })
+  catch (error) {
+    console.error('Error:', error);
+    res.status(500).end();
   }
-
-  console.log(`Job with ID ${jobId} is still in progress`)
-  return res.json({ complete: false })
-})
-
-app.get('/download', (req, res) => {
-  const { ref } = req.query
-  if (!ref || !tempStorage[ref] || !tempStorage[ref].filePath) {
-    return res.status(400).send('Invalid or missing reference ID')
-  }
-
-  const filePath = tempStorage[ref].filePath
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  )
-  return res.download(filePath, err => {
-    if (err) {
-      console.error(err)
-    } else {
-      fs.unlinkSync(filePath)
-      delete tempStorage[ref]
-      console.log(`File ${filePath} has been cleaned up`)
-    }
-  })
 })

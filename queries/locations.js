@@ -1,5 +1,5 @@
 const locations = (escapedIds, graph) => `
-SELECT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
+SELECT DISTINCT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
   ?beschrijving ?minimumleeftijd ?maximumleeftijd ?startdatum ?kboNummer ?straat ?huisnummer
   ?busnummer ?postcode ?gemeente ?land
 WHERE { GRAPH <${graph}> {
