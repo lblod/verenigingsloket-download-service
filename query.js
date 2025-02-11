@@ -88,6 +88,7 @@ export async function writeFileToStore(filename, filepath) {
           mu:uuid "${virtualFileUuid}" ;
           nfo:fileName "${filename}" ;
           dct:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dct:subject <http://data.lblod.info/datasets/verenigingen-loket-organisations-dump>;
           dbpedia:fileExtension "xlsx" ;
           dct:created ${nowLiteral} ;
           dct:modified ${nowLiteral} ;
