@@ -52,7 +52,7 @@ async function createSpreadSheet (associationIds) {
     throw new Error('No associations found.');
   }
 
-  const fileName = `associations-export-${uuid()}.xlsx`;
+  const fileName = `verenigingen-export-${uuid()}.xlsx`;
   const filePath = path.join(SHARE_FOLDER, fileName);
 
   // Measure time taken by createSheet
@@ -77,7 +77,7 @@ async function createSpreadSheet (associationIds) {
   //TODO: cleanup/deprecate previous
 
   //store meta in DB
-  const fileUri = await writeFileToStore(fileName, filePath);
+  const fileUri = await writeFileToStore('verenigingen-export.xlsx', filePath);
   console.log(`File stored in DB with URI: ${fileUri}`);
   
   return filePath
