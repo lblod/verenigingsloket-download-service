@@ -78,7 +78,7 @@ const createSheet = async (
         Achternaam: el.achternaam,
         Email: el.email,
         Websites: el.websites,
-        Socials: el.solcials,
+        Socials: el.socials,
         Naam: el.naam,
         Type: el.type,
         Hoofdactiviteiten: el.hoofdactiviteiten,

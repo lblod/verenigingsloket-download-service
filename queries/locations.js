@@ -1,10 +1,10 @@
 const locations = (escapedIds, graph) => `
-SELECT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
+SELECT DISTINCT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
   ?beschrijving ?minimumleeftijd ?maximumleeftijd ?startdatum ?kboNummer ?straat ?huisnummer
   ?busnummer ?postcode ?gemeente ?land
 WHERE { GRAPH <${graph}> {
     VALUES ?uuid {  ${escapedIds}  }
-    ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
+    ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
       mu:uuid ?uuid .
     OPTIONAL { ?vereniging skos:prefLabel ?naam . }
     OPTIONAL {

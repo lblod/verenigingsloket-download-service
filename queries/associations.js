@@ -4,7 +4,7 @@ SELECT DISTINCT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARAT
   ?busnummer ?postcode ?gemeente ?land
 WHERE { GRAPH <${graph}> {
     VALUES ?uuid {  ${escapedIds}  }
-  ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
+  ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
     mu:uuid ?uuid .
 
     OPTIONAL { ?vereniging skos:prefLabel ?naam . }

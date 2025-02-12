@@ -1,5 +1,7 @@
-import { query as muQuery, sparqlEscapeString } from 'mu'
+import { sparqlEscapeString, sparqlEscapeDateTime, uuid } from 'mu'
+import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER} from './env-config';
 import { PREFIX, associations, locations, representatives } from './queries'
+import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 
 /**
  * convert results of select query to an array of objects.
@@ -32,23 +34,76 @@ export function parseResult (result) {
   })
 }
 
+export async function getAllAssociations(graph) {
+  const queryStr = `
+    ${PREFIX}
+
+    SELECT DISTINCT ?association ?uuid
+      WHERE {
+        GRAPH <${graph}> {
+          ?association a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
+             mu:uuid ?uuid .
+        }
+    }
+  `;
+
+  const res = await querySudo(queryStr);
+  return parseResult(res);
+}
+
 export const queryAssociations = async (associationIds, graph) => {
   if (!associationIds) return null
   const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
-  const res = await muQuery(`${PREFIX} ${associations(escapedIds, graph)}`)
+  const res = await querySudo(`${PREFIX} ${associations(escapedIds, graph)}`)
   return parseResult(res)
 }
 
 export const queryLocations = async (associationIds, graph) => {
   if (!associationIds) return null
   const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
-  const res = await muQuery(`${PREFIX} ${locations(escapedIds, graph)}`)
+  const res = await querySudo(`${PREFIX} ${locations(escapedIds, graph)}`)
   return parseResult(res)
 }
 
 export const queryRepresentatives = async (associationIds, graph) => {
   if (!associationIds) return null
   const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
-  const res = await muQuery(`${PREFIX} ${representatives(escapedIds, graph)}`)
+  const res = await querySudo(`${PREFIX} ${representatives(escapedIds, graph)}`)
   return parseResult(res)
+}
+
+export async function writeFileToStore(filename, filepath) {
+    const virtualFileUuid = uuid();
+    const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
+    const nowLiteral = sparqlEscapeDateTime(new Date());
+    const physicalFileUuid = uuid();
+    const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
+
+    await updateSudo(`
+    ${PREFIX}
+
+    INSERT DATA {
+      GRAPH <${FILES_GRAPH}> {
+        <${virtualFileUri}> a nfo:FileDataObject ;
+          mu:uuid "${virtualFileUuid}" ;
+          nfo:fileName "${filename}" ;
+          dct:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dct:subject <http://data.lblod.info/datasets/verenigingen-loket-organisations-dump>;
+          dbpedia:fileExtension "xlsx" ;
+          dct:created ${nowLiteral} ;
+          dct:modified ${nowLiteral} ;
+          dct:publisher <${SERVICE_NAME}> .
+        <${physicalFileUri}> a nfo:FileDataObject ;
+          mu:uuid "${physicalFileUuid}" ;
+          nie:dataSource <${virtualFileUri}> ;
+          nfo:fileName "${filename}" ;
+          dct:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dbpedia:fileExtension "xlsx" ;
+          dct:created ${nowLiteral} ;
+          dct:modified ${nowLiteral} .
+      }
+    }
+  `);
+
+  return virtualFileUri;
 }
