@@ -1,5 +1,5 @@
 const locations = (escapedIds, graph) => `
-SELECT DISTINCT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
+SELECT DISTINCT ?vCode ?organizatieStatus ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARATOR = ", ") AS ?hoofdactiviteiten)
   ?beschrijving ?minimumleeftijd ?maximumleeftijd ?startdatum ?kboNummer ?straat ?huisnummer
   ?busnummer ?postcode ?gemeente ?land
 WHERE { GRAPH <${graph}> {
@@ -53,9 +53,13 @@ WHERE { GRAPH <${graph}> {
                   generiek:gestructureerdeIdentificator ?VstructuredID .
       ?VstructuredID generiek:lokaleIdentificator ?vCode .
     }
+    OPTIONAL {
+      ?vereniging reorg:orgStatus ?organizatieStatusUri .
+    }
   }
   GRAPH <http://mu.semte.ch/graphs/public> {
     ?classification  skos:notation ?type .
+    ?organizatieStatusUri skos:prefLabel ?organizatieStatus .
   }
 }
 ORDER BY ?vCode`

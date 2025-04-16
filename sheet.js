@@ -20,6 +20,7 @@ const createSheet = async (
     const data = deduplicate(
       associations.map(el => ({
         VCode: el.vCode,
+        Status: el.organizatieStatus,
         Naam: el.naam,
         Type: el.type,
         Hoofdactiviteiten: el.hoofdactiviteiten,
@@ -47,6 +48,7 @@ const createSheet = async (
     const data = deduplicate(
       locations.map(el => ({
         VCode: el.vCode,
+        Status: el.organizatieStatus,
         Straat: el.straat,
         Huisnummer: el.huisnummer,
         Busnummer: el.busnummer,
