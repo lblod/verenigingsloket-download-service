@@ -4,7 +4,7 @@ SELECT DISTINCT ?vCode ?naam ?type (GROUP_CONCAT(DISTINCT ?activityName; SEPARAT
   (GROUP_CONCAT(DISTINCT ?website; SEPARATOR = "") AS ?websites) (GROUP_CONCAT(DISTINCT ?social; SEPARATOR = "") AS ?socials)
 WHERE { GRAPH <${graph}> {
     VALUES ?uuid {  ${escapedIds}  }
-    ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
+    ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
         mu:uuid ?uuid .
     OPTIONAL { ?vereniging skos:prefLabel ?naam . }
     OPTIONAL {

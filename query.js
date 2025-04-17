@@ -41,7 +41,7 @@ export async function getAllAssociations(graph) {
     SELECT DISTINCT ?association ?uuid
       WHERE {
         GRAPH <${graph}> {
-          ?association a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#FeitelijkeVereniging> ;
+          ?association a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
              mu:uuid ?uuid .
         }
     }
