@@ -1,7 +1,8 @@
 import { app, uuid } from 'mu'
 import { SHARE_FOLDER,
          SOURCE_GRAPH,
-         CRON_PATTERN_SPREADSHEET_JOB
+         CRON_PATTERN_SPREADSHEET_JOB,
+         FEATURE_INCLUDE_REPRESENTATIVES
        } from './env-config';
 import {
   getAllAssociations,
@@ -37,15 +38,19 @@ async function createSpreadSheet (associationIds) {
   let allRepresentatives = []
 
   for (const chunk of associationIdChunks) {
-    const [associations, locations, representatives] = await Promise.all([
+    const queries = [
       queryAssociations(chunk, graph),
       queryLocations(chunk, graph),
-      queryRepresentatives(chunk, graph)
-    ])
+    ]
+    if (FEATURE_INCLUDE_REPRESENTATIVES) {
+      queries.push(queryRepresentatives(chunk, graph))
+    }
+
+    const [associations, locations, representatives] = await Promise.all(queries)
 
     if (associations) allAssociations.push(...associations)
     if (locations) allLocations.push(...locations)
-    if (representatives) allRepresentatives.push(...representatives)
+    if (FEATURE_INCLUDE_REPRESENTATIVES && representatives) allRepresentatives.push(...representatives)
   }
 
   if (allAssociations.length === 0) {
