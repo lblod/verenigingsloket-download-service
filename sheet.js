@@ -1,4 +1,20 @@
 import XLSX from 'xlsx-js-style'
+import { EXCEL_MAX_CELL_LENGTH } from './env-config'
+
+const truncate = value => {
+  if (typeof value === 'string' && value.length > EXCEL_MAX_CELL_LENGTH) {
+    return value.substring(0, EXCEL_MAX_CELL_LENGTH)
+  }
+  return value
+}
+
+const truncateRow = row => {
+  const result = {}
+  for (const [key, value] of Object.entries(row)) {
+    result[key] = truncate(value)
+  }
+  return result
+}
 
 const deduplicate = data => {
   const seen = new Set()
@@ -18,7 +34,7 @@ const createSheet = async (
   if (associations.length) {
     console.log('Create associations sheet')
     const data = deduplicate(
-      associations.map(el => ({
+      associations.map(el => truncateRow({
         VCode: el.vCode,
         Status: el.organizatieStatus,
         Naam: el.naam,
@@ -46,7 +62,7 @@ const createSheet = async (
   if (locations.length) {
     console.log('Create locations sheet')
     const data = deduplicate(
-      locations.map(el => ({
+      locations.map(el => truncateRow({
         VCode: el.vCode,
         Status: el.organizatieStatus,
         Straat: el.straat,
@@ -74,7 +90,7 @@ const createSheet = async (
   if (representatives.length) {
     console.log('Create representatives sheet')
     const data = deduplicate(
-      representatives.map(el => ({
+      representatives.map(el => truncateRow({
         VCode: el.vCode,
         Voornaam: el.voornaam,
         Achternaam: el.achternaam,
