@@ -59,6 +59,8 @@ Alternatively, if you have it set up within a semantic.works stack, you can use 
 | `SOURCE_GRAPH` | Graph URI for source data | `http://mu.semte.ch/graphs/organizations` |
 | `SERVICE_NAME` | Service identifier URI | `http://data.lblod.info/services/id/verenigingsloket-download-service` |
 | `CRON_PATTERN_SPREADSHEET_JOB` | Cron pattern for scheduled spreadsheet generation | `0 0 * * *` (daily at midnight) |
+| `CRON_PATTERN_CLEANUP_JOB` | Cron pattern for cleanup of old files and jobs | `13 1 * * *` (daily at 01:13) |
+| `CLEANUP_MAX_AGE_DAYS` | Delete files and jobs older than this many days | `7` |
 | `EXCEL_MAX_CELL_LENGTH` | Maximum characters per Excel cell | `32767` |
 
 ### Graph Configuration

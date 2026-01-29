@@ -2,6 +2,8 @@ import { app, uuid } from 'mu'
 import { SHARE_FOLDER,
          SOURCE_GRAPH,
          CRON_PATTERN_SPREADSHEET_JOB,
+         CRON_PATTERN_CLEANUP_JOB,
+         CLEANUP_MAX_AGE_DAYS,
        } from './env-config';
 import {
   getAllAssociations,
@@ -14,6 +16,10 @@ import {
   writeFileToAccountStore,
   createJob,
   updateJobStatus,
+  getOldFiles,
+  getOldJobs,
+  deleteFileFromStore,
+  deleteJobFromStore,
 } from './query'
 
 import createSheet from './sheet'
@@ -157,6 +163,63 @@ schedule.scheduleJob(CRON_PATTERN_SPREADSHEET_JOB, async function() {
     console.error(`Error for job created at ${timestamp}`);
     console.error(`Error details: ${error.message}`);
     console.error(`Error details: ${error.stack}`);
+  }
+});
+
+/**
+ * Cleanup job - deletes files and jobs older than CLEANUP_MAX_AGE_DAYS.
+ * Runs daily at 1 AM by default.
+ * Does NOT delete access logs (DATA_ACCESS_LOG_GRAPH).
+ */
+schedule.scheduleJob(CRON_PATTERN_CLEANUP_JOB, async function() {
+  const timestamp = new Date().toISOString();
+  console.log(`Cleanup job started at ${timestamp}`);
+
+  try {
+    // 1. Get and delete old files
+    const oldFiles = await getOldFiles(CLEANUP_MAX_AGE_DAYS);
+    console.log(`Found ${oldFiles.length} old files to clean up`);
+
+    for (const file of oldFiles) {
+      try {
+        // Delete physical file from disk
+        if (file.physicalUri) {
+          const filePath = file.physicalUri;
+          try {
+            await fs.promises.unlink(filePath);
+            console.log(`Deleted physical file: ${filePath}`);
+          } catch (err) {
+            if (err.code !== 'ENOENT') {
+              console.error(`Failed to delete physical file ${filePath}:`, err.message);
+            }
+          }
+        }
+
+        // Delete file metadata from triplestore
+        await deleteFileFromStore(file.file, file.physicalFile, file.graph);
+        console.log(`Deleted file metadata: ${file.file}`);
+      } catch (err) {
+        console.error(`Failed to clean up file ${file.file}:`, err.message);
+      }
+    }
+
+    // 2. Get and delete old jobs
+    const oldJobs = await getOldJobs(CLEANUP_MAX_AGE_DAYS);
+    console.log(`Found ${oldJobs.length} old jobs to clean up`);
+
+    for (const job of oldJobs) {
+      try {
+        await deleteJobFromStore(job.job, job.graph);
+        console.log(`Deleted job: ${job.job}`);
+      } catch (err) {
+        console.error(`Failed to clean up job ${job.job}:`, err.message);
+      }
+    }
+
+    console.log(`Cleanup job completed at ${new Date().toISOString()}`);
+  } catch (error) {
+    console.error(`Cleanup job failed at ${timestamp}:`, error.message);
+    console.error(`Error stack: ${error.stack}`);
   }
 });
 

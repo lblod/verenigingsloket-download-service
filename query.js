@@ -1,5 +1,5 @@
 import { sparqlEscapeString, sparqlEscapeDateTime, sparqlEscapeUri, uuid } from 'mu'
-import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER, SESSION_GRAPH, ORGANISATION_GRAPH, ASSOCIATIONS_GRAPH, USE_API_FOR_REPRESENTATIVES, CLIENT_ID } from './env-config.js';
+import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER, SESSION_GRAPH, ORGANISATION_GRAPH, ASSOCIATIONS_GRAPH, USE_API_FOR_REPRESENTATIVES, CLIENT_ID, CLEANUP_MAX_AGE_DAYS } from './env-config.js';
 import { PREFIX, associations, locations, representatives } from './queries/index.js'
 import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 import { fetchAssociationsFromAPI } from './lib/api-client.js';
@@ -325,6 +325,120 @@ export async function updateJobStatus(jobUri, accountUuid, status, resultFileUri
       GRAPH <${accountGraph}> {
         <${jobUri}> adms:status ?oldStatus ;
           dcterms:modified ?oldModified .
+      }
+    }
+  `);
+}
+
+/**
+ * Get old files (older than maxAgeDays) for cleanup.
+ * Returns files from both the general FILES_GRAPH and account-specific graphs.
+ */
+export async function getOldFiles(maxAgeDays = CLEANUP_MAX_AGE_DAYS) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+  const cutoffLiteral = sparqlEscapeDateTime(cutoffDate);
+
+  const queryStr = `
+    ${PREFIX}
+    SELECT DISTINCT ?file ?physicalFile ?physicalUri ?graph WHERE {
+      GRAPH ?graph {
+        ?file a nfo:FileDataObject ;
+          dcterms:created ?created .
+        FILTER(?created < ${cutoffLiteral})
+        FILTER(STRSTARTS(STR(?file), "http://data.lblod.info/files/"))
+      }
+      OPTIONAL {
+        GRAPH ?graph {
+          ?physicalFile nie:dataSource ?file ;
+            a nfo:FileDataObject .
+        }
+      }
+      BIND(REPLACE(STR(?physicalFile), "^share://", "${SHARE_FOLDER}/") AS ?physicalUri)
+    }
+  `;
+
+  const res = await querySudo(queryStr);
+  return parseResult(res);
+}
+
+/**
+ * Delete a file and its physical counterpart from the triplestore.
+ */
+export async function deleteFileFromStore(fileUri, physicalFileUri, graph) {
+  await updateSudo(`
+    ${PREFIX}
+    DELETE {
+      GRAPH <${graph}> {
+        <${fileUri}> ?p ?o .
+      }
+    }
+    WHERE {
+      GRAPH <${graph}> {
+        <${fileUri}> ?p ?o .
+      }
+    }
+  `);
+
+  if (physicalFileUri) {
+    await updateSudo(`
+      ${PREFIX}
+      DELETE {
+        GRAPH <${graph}> {
+          <${physicalFileUri}> ?p ?o .
+        }
+      }
+      WHERE {
+        GRAPH <${graph}> {
+          <${physicalFileUri}> ?p ?o .
+        }
+      }
+    `);
+  }
+}
+
+/**
+ * Get old jobs (older than maxAgeDays) for cleanup.
+ * Only returns completed jobs (success or failed), not busy ones.
+ */
+export async function getOldJobs(maxAgeDays = CLEANUP_MAX_AGE_DAYS) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+  const cutoffLiteral = sparqlEscapeDateTime(cutoffDate);
+
+  const queryStr = `
+    ${PREFIX}
+    SELECT DISTINCT ?job ?graph ?resultFile WHERE {
+      GRAPH ?graph {
+        ?job a cogs:Job ;
+          task:operation <${JOB_OPERATION}> ;
+          dcterms:created ?created ;
+          adms:status ?status .
+        FILTER(?created < ${cutoffLiteral})
+        FILTER(?status IN (<${JOB_STATUS_SUCCESS}>, <${JOB_STATUS_FAILED}>))
+        OPTIONAL { ?job task:resultsContainer ?resultFile . }
+      }
+    }
+  `;
+
+  const res = await querySudo(queryStr);
+  return parseResult(res);
+}
+
+/**
+ * Delete a job from the triplestore.
+ */
+export async function deleteJobFromStore(jobUri, graph) {
+  await updateSudo(`
+    ${PREFIX}
+    DELETE {
+      GRAPH <${graph}> {
+        <${jobUri}> ?p ?o .
+      }
+    }
+    WHERE {
+      GRAPH <${graph}> {
+        <${jobUri}> ?p ?o .
       }
     }
   `);
