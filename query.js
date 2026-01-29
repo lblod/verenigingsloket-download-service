@@ -1,7 +1,9 @@
-import { sparqlEscapeString, sparqlEscapeDateTime, uuid } from 'mu'
-import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER} from './env-config';
-import { PREFIX, associations, locations, representatives } from './queries'
+import { sparqlEscapeString, sparqlEscapeDateTime, sparqlEscapeUri, uuid } from 'mu'
+import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER, SESSION_GRAPH, ORGANISATION_GRAPH, ASSOCIATIONS_GRAPH, USE_API_FOR_REPRESENTATIVES, CLIENT_ID } from './env-config.js';
+import { PREFIX, associations, locations, representatives } from './queries/index.js'
 import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
+import { fetchAssociationsFromAPI } from './lib/api-client.js';
+import { mapApiResponseToRepresentatives } from './lib/response-mapper.js';
 
 /**
  * convert results of select query to an array of objects.
@@ -9,7 +11,7 @@ import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
  * @method parseResult
  * @return {Array}
  */
-export function parseResult (result) {
+export function parseResult(result) {
   if (!(result.results && result.results.bindings.length)) return []
 
   const bindingKeys = result.head.vars
@@ -32,6 +34,50 @@ export function parseResult (result) {
     })
     return obj
   })
+}
+
+export async function getAccountIdAndGroup(sessionId) {
+  const queryStr = `
+    ${PREFIX}
+    SELECT ?accountUuid ?adminUnit ?person WHERE {
+      GRAPH ${sparqlEscapeUri(SESSION_GRAPH)} {
+        ${sparqlEscapeUri(sessionId)}
+          session:account ?account ;
+          ext:sessionGroup ?adminUnit .
+      }
+      ?account mu:uuid ?accountUuid .
+      OPTIONAL { ?person foaf:account ?account . }
+    }
+  `;
+  const res = await querySudo(queryStr);
+  const binding = res?.results?.bindings?.[0];
+  return {
+    accountUuid: binding?.accountUuid?.value || null,
+    adminUnit: binding?.adminUnit?.value || null,
+    person: binding?.person?.value || null,
+  };
+}
+
+export async function getAllAllowedAssociationSensitiveDataIds(adminUnit) {
+  const queryStr = `
+    ${PREFIX}
+    SELECT DISTINCT ?association ?uuid WHERE {
+      GRAPH ${sparqlEscapeUri(ASSOCIATIONS_GRAPH)} {
+        ?association a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
+          mu:uuid ?uuid ;
+          org:hasPrimarySite/organisatie:bestaatUit ?address .
+        ?address locn:postCode ?postalCode .
+      }
+      GRAPH ${sparqlEscapeUri(ORGANISATION_GRAPH)} {
+        ?postInfo a adres:Postinfo ;
+          geo:sfWithin ?werkingsgebied ;
+          adres:postcode ?postalCode .
+        ${sparqlEscapeUri(adminUnit)} besluit:werkingsgebied ?werkingsgebied .
+      }
+    }
+  `;
+  const res = await querySudo(queryStr);
+  return parseResult(res);
 }
 
 export async function getAllAssociations(graph) {
@@ -65,21 +111,81 @@ export const queryLocations = async (associationIds, graph) => {
   return parseResult(res)
 }
 
-export const queryRepresentatives = async (associationIds, graph) => {
+// SPARQL-based representatives query (fallback)
+export const queryRepresentativesSPARQL = async (associationIds, graph) => {
   if (!associationIds) return null
   const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ')
   const res = await querySudo(`${PREFIX} ${representatives(escapedIds, graph)}`)
   return parseResult(res)
 }
 
-export async function writeFileToStore(filename, filepath) {
-    const virtualFileUuid = uuid();
-    const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
-    const nowLiteral = sparqlEscapeDateTime(new Date());
-    const physicalFileUuid = uuid();
-    const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
+// Get vCodes for given association UUIDs
+export async function getVCodesForAssociations(associationIds, graph) {
+  if (!associationIds || associationIds.length === 0) return [];
 
-    await updateSudo(`
+  const escapedIds = associationIds.map(id => sparqlEscapeString(id)).join(' ');
+
+  const queryStr = `
+    ${PREFIX}
+    SELECT DISTINCT ?uuid ?vCode WHERE {
+      GRAPH <${graph}> {
+        VALUES ?uuid { ${escapedIds} }
+        ?vereniging a <https://data.vlaanderen.be/ns/FeitelijkeVerenigingen#Vereniging> ;
+          mu:uuid ?uuid .
+        OPTIONAL {
+          ?vereniging adms:identifier ?Videntifier .
+          ?Videntifier skos:notation "vCode" ;
+            generiek:gestructureerdeIdentificator ?VstructuredID .
+          ?VstructuredID generiek:lokaleIdentificator ?vCode .
+        }
+      }
+    }
+  `;
+
+  const res = await querySudo(queryStr);
+  return parseResult(res);
+}
+
+// API-based representatives query
+export const queryRepresentativesAPI = async (associationIds, graph) => {
+  if (!associationIds || associationIds.length === 0) return [];
+
+  // Step 1: Get vCodes for the association UUIDs
+  const vCodeMappings = await getVCodesForAssociations(associationIds, graph);
+  const vCodes = vCodeMappings
+    .filter(m => m.vCode) // Filter out associations without vCode
+    .map(m => m.vCode);
+
+  if (vCodes.length === 0) {
+    console.warn('No vCodes found for the given associations');
+    return [];
+  }
+
+  console.log(`Found ${vCodes.length} vCodes for ${associationIds.length} associations`);
+
+  // Step 2: Fetch from API
+  const apiResponses = await fetchAssociationsFromAPI(vCodes, CLIENT_ID);
+
+  // Step 3: Map to expected format
+  return mapApiResponseToRepresentatives(apiResponses);
+}
+
+// Main function with feature flag
+export const queryRepresentatives = async (associationIds, graph) => {
+  if (USE_API_FOR_REPRESENTATIVES) {
+    return queryRepresentativesAPI(associationIds, graph);
+  }
+  return queryRepresentativesSPARQL(associationIds, graph);
+}
+
+export async function writeFileToStore(filename, filepath) {
+  const virtualFileUuid = uuid();
+  const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
+  const nowLiteral = sparqlEscapeDateTime(new Date());
+  const physicalFileUuid = uuid();
+  const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
+
+  await updateSudo(`
     ${PREFIX}
 
     INSERT DATA {
@@ -87,23 +193,139 @@ export async function writeFileToStore(filename, filepath) {
         <${virtualFileUri}> a nfo:FileDataObject ;
           mu:uuid "${virtualFileUuid}" ;
           nfo:fileName "${filename}" ;
-          dct:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
-          dct:subject <http://data.lblod.info/datasets/verenigingen-loket-organisations-dump>;
+          dcterms:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dcterms:subject <http://data.lblod.info/datasets/verenigingen-loket-organisations-dump>;
           dbpedia:fileExtension "xlsx" ;
-          dct:created ${nowLiteral} ;
-          dct:modified ${nowLiteral} ;
-          dct:publisher <${SERVICE_NAME}> .
+          dcterms:created ${nowLiteral} ;
+          dcterms:modified ${nowLiteral} ;
+          dcterms:publisher <${SERVICE_NAME}> .
         <${physicalFileUri}> a nfo:FileDataObject ;
           mu:uuid "${physicalFileUuid}" ;
           nie:dataSource <${virtualFileUri}> ;
           nfo:fileName "${filename}" ;
-          dct:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dcterms:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
           dbpedia:fileExtension "xlsx" ;
-          dct:created ${nowLiteral} ;
-          dct:modified ${nowLiteral} .
+          dcterms:created ${nowLiteral} ;
+          dcterms:modified ${nowLiteral} .
       }
     }
   `);
 
   return virtualFileUri;
+}
+
+export async function writeFileToAccountStore(filename, filepath, accountUuid) {
+  const accountGraph = `http://mu.semte.ch/graphs/accounts/${accountUuid}`;
+  const virtualFileUuid = uuid();
+  const virtualFileUri = `http://data.lblod.info/files/${virtualFileUuid}`;
+  const nowLiteral = sparqlEscapeDateTime(new Date());
+  const physicalFileUuid = uuid();
+  const physicalFileUri = filepath.replace(SHARE_FOLDER, 'share://');
+
+  await updateSudo(`
+    ${PREFIX}
+
+    INSERT DATA {
+      GRAPH <${accountGraph}> {
+        <${virtualFileUri}> a nfo:FileDataObject ;
+          mu:uuid "${virtualFileUuid}" ;
+          nfo:fileName "${filename}" ;
+          dcterms:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dcterms:subject <http://data.lblod.info/datasets/verenigingen-loket-sensitive-data-dump>;
+          dbpedia:fileExtension "xlsx" ;
+          dcterms:created ${nowLiteral} ;
+          dcterms:modified ${nowLiteral} ;
+          dcterms:publisher <${SERVICE_NAME}> .
+        <${physicalFileUri}> a nfo:FileDataObject ;
+          mu:uuid "${physicalFileUuid}" ;
+          nie:dataSource <${virtualFileUri}> ;
+          nfo:fileName "${filename}" ;
+          dcterms:format "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ;
+          dbpedia:fileExtension "xlsx" ;
+          dcterms:created ${nowLiteral} ;
+          dcterms:modified ${nowLiteral} .
+      }
+    }
+  `);
+
+  return virtualFileUri;
+}
+
+const JOB_STATUS_BUSY = 'http://redpencil.data.gift/id/concept/JobStatus/busy';
+const JOB_STATUS_SUCCESS = 'http://redpencil.data.gift/id/concept/JobStatus/success';
+const JOB_STATUS_FAILED = 'http://redpencil.data.gift/id/concept/JobStatus/failed';
+const JOB_OPERATION = 'http://data.lblod.info/operations/sensitive-data-export';
+
+export async function createJob(accountUuid) {
+  const accountGraph = `http://mu.semte.ch/graphs/accounts/${accountUuid}`;
+  const jobUuid = uuid();
+  const jobUri = `http://data.lblod.info/jobs/${jobUuid}`;
+  const nowLiteral = sparqlEscapeDateTime(new Date());
+
+  await updateSudo(`
+    ${PREFIX}
+
+    INSERT DATA {
+      GRAPH <${accountGraph}> {
+        <${jobUri}> a cogs:Job ;
+          mu:uuid "${jobUuid}" ;
+          adms:status <${JOB_STATUS_BUSY}> ;
+          task:operation <${JOB_OPERATION}> ;
+          dcterms:created ${nowLiteral} ;
+          dcterms:modified ${nowLiteral} ;
+          dcterms:creator <${SERVICE_NAME}> .
+      }
+    }
+  `);
+
+  return { jobUri, jobUuid };
+}
+
+export async function updateJobStatus(jobUri, accountUuid, status, resultFileUri = null, errorMessage = null) {
+  const accountGraph = `http://mu.semte.ch/graphs/accounts/${accountUuid}`;
+  const nowLiteral = sparqlEscapeDateTime(new Date());
+
+  let statusUri;
+  switch (status) {
+    case 'success':
+      statusUri = JOB_STATUS_SUCCESS;
+      break;
+    case 'failed':
+      statusUri = JOB_STATUS_FAILED;
+      break;
+    default:
+      statusUri = JOB_STATUS_BUSY;
+  }
+
+  // Build optional triples
+  let optionalTriples = '';
+  if (resultFileUri) {
+    optionalTriples += `\n        <${jobUri}> task:resultsContainer <${resultFileUri}> .`;
+  }
+  if (errorMessage) {
+    optionalTriples += `\n        <${jobUri}> task:error ${sparqlEscapeString(errorMessage)} .`;
+  }
+
+  await updateSudo(`
+    ${PREFIX}
+
+    DELETE {
+      GRAPH <${accountGraph}> {
+        <${jobUri}> adms:status ?oldStatus ;
+          dcterms:modified ?oldModified .
+      }
+    }
+    INSERT {
+      GRAPH <${accountGraph}> {
+        <${jobUri}> adms:status <${statusUri}> ;
+          dcterms:modified ${nowLiteral} .${optionalTriples}
+      }
+    }
+    WHERE {
+      GRAPH <${accountGraph}> {
+        <${jobUri}> adms:status ?oldStatus ;
+          dcterms:modified ?oldModified .
+      }
+    }
+  `);
 }
