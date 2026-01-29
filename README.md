@@ -39,6 +39,7 @@ curl -X POST http://localhost/sensitive-data-jobs \
   -H "mu-auth-allowed-groups: [{\"name\":\"verenigingen-beheerder\"}]" \
   -H "X-Request-Reason: cd64bd95-2a41-4a76-a927-20df200be10b"
 ```
+Alternatively, if you have it set up within a semantic.works stack, you can use a `proxy_session` cookie for authentication via the identifier.
 
 **Error Responses:**
 | Status | Condition |
