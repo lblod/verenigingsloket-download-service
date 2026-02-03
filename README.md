@@ -200,17 +200,3 @@ WHERE {
 }
 ORDER BY DESC(?date)
 ```
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run locally
-npm start
-```
-
-## Related Services
-
-- [verenigingsregister-proxy-service](https://github.com/lblod/verenigingsregister-proxy-service) - Proxy service for the Vlaanderen association registry API
