@@ -96,7 +96,7 @@ async function createSpreadSheet (associationIds) {
   return filePath
 }
 
-async function createSensitiveDataSpreadSheet (associationIds, accountUuid) {
+async function createSensitiveDataSpreadSheet (associationIds, accountUuid, sessionId) {
   const graph = `http://mu.semte.ch/graphs/organizations`
   const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
@@ -109,7 +109,7 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid) {
     const [associations, locations, representatives] = await Promise.all([
       queryAssociations(chunk, graph),
       queryLocations(chunk, graph),
-      queryRepresentatives(chunk, graph),
+      queryRepresentatives(chunk, graph, sessionId),
     ])
 
     if (associations) allAssociations.push(...associations)
@@ -339,7 +339,7 @@ app.post('/sensitive-data-jobs', async function (req, res) {
     });
 
     // 8. Process asynchronously
-    processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit);
+    processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, sessionId);
   } catch (error) {
     console.error('Error creating sensitive data job:', error);
 
@@ -360,7 +360,7 @@ app.post('/sensitive-data-jobs', async function (req, res) {
   }
 })
 
-async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit) {
+async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, sessionId) {
   const timestamp = new Date().toISOString();
   console.log(`Processing sensitive data job ${jobUuid} at ${timestamp}`);
 
@@ -378,7 +378,7 @@ async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit) 
     console.log(`Found ${associationIds.length} associations for job ${jobUuid}`);
 
     // 2. Create spreadsheet WITH representatives
-    const { fileUri } = await createSensitiveDataSpreadSheet(associationIds, accountUuid);
+    const { fileUri } = await createSensitiveDataSpreadSheet(associationIds, accountUuid, sessionId);
 
     // 3. Update job status to success with file reference
     await updateJobStatus(jobUri, accountUuid, 'success', fileUri);
