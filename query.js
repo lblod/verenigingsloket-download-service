@@ -1,5 +1,5 @@
 import { sparqlEscapeString, sparqlEscapeDateTime, sparqlEscapeUri, uuid } from 'mu'
-import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER, SESSION_GRAPH, ORGANISATION_GRAPH, ASSOCIATIONS_GRAPH, USE_API_FOR_REPRESENTATIVES, CLIENT_ID, CLEANUP_MAX_AGE_DAYS } from './env-config.js';
+import { SERVICE_NAME, FILES_GRAPH, SHARE_FOLDER, SESSION_GRAPH, ORGANISATION_GRAPH, ASSOCIATIONS_GRAPH, USE_API_FOR_REPRESENTATIVES, CLEANUP_MAX_AGE_DAYS } from './env-config.js';
 import { PREFIX, associations, locations, representatives } from './queries/index.js'
 import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 import { fetchAssociationsFromAPI } from './lib/api-client.js';
@@ -147,7 +147,7 @@ export async function getVCodesForAssociations(associationIds, graph) {
 }
 
 // API-based representatives query
-export const queryRepresentativesAPI = async (associationIds, graph) => {
+export const queryRepresentativesAPI = async (associationIds, graph, sessionId) => {
   if (!associationIds || associationIds.length === 0) return [];
 
   // Step 1: Get vCodes for the association UUIDs
@@ -164,16 +164,16 @@ export const queryRepresentativesAPI = async (associationIds, graph) => {
   console.log(`Found ${vCodes.length} vCodes for ${associationIds.length} associations`);
 
   // Step 2: Fetch from API
-  const apiResponses = await fetchAssociationsFromAPI(vCodes, CLIENT_ID);
+  const apiResponses = await fetchAssociationsFromAPI(vCodes, sessionId);
 
   // Step 3: Map to expected format
   return mapApiResponseToRepresentatives(apiResponses);
 }
 
 // Main function with feature flag
-export const queryRepresentatives = async (associationIds, graph) => {
+export const queryRepresentatives = async (associationIds, graph, sessionId) => {
   if (USE_API_FOR_REPRESENTATIVES) {
-    return queryRepresentativesAPI(associationIds, graph);
+    return queryRepresentativesAPI(associationIds, graph, sessionId);
   }
   return queryRepresentativesSPARQL(associationIds, graph);
 }

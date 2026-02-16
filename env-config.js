@@ -20,7 +20,7 @@ export const AUD = process.env.AUD;
 export const AUTH_DOMAIN = process.env.AUTH_DOMAIN || 'authenticatie.vlaanderen.be';
 export const API_CONCURRENT_REQUESTS = parseInt(process.env.API_CONCURRENT_REQUESTS, 10) || 10;
 export const USE_API_FOR_REPRESENTATIVES = process.env.USE_API_FOR_REPRESENTATIVES !== 'false';
-export const CLIENT_ID = process.env.CLIENT_ID;
+export const CLIENT_CONFIG_GRAPH = process.env.CLIENT_CONFIG_GRAPH || 'http://mu.semte.ch/graphs/client-configurations';
 
 // Authorization Configuration
 export const ENABLE_REQUEST_REASON_CHECK = process.env.ENABLE_REQUEST_REASON_CHECK !== 'false';
