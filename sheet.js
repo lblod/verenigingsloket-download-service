@@ -27,7 +27,8 @@ const deduplicate = data => {
 const createSheet = async (
   associations = [],
   locations = [],
-  representatives = []
+  representatives = [],
+  { isSensitiveData = false } = {}
 ) => {
   const workbook = XLSX.utils.book_new()
 
@@ -87,7 +88,7 @@ const createSheet = async (
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   }
 
-  if (representatives.length) {
+  if (isSensitiveData) {
     console.log('Create representatives sheet')
     const data = deduplicate(
       representatives.map(el => truncateRow({

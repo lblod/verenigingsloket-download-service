@@ -129,7 +129,8 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, sess
   const fileData = await createSheet(
     allAssociations,
     allLocations,
-    allRepresentatives
+    allRepresentatives,
+    { isSensitiveData: true }
   );
   const endTime = performance.now();
 
