@@ -28,7 +28,7 @@ Creates a spreadsheet export including sensitive data (representatives). Require
 | Header | Description |
 |--------|-------------|
 | `mu-session-id` | Valid session ID |
-| `mu-auth-allowed-groups` | JSON array of user roles (must include `verenigingen-beheerder` or `verenigingen-lezer`) |
+| `mu-auth-allowed-groups` | JSON array of user roles (must include `verenigingen-beheerder`) |
 | `X-Request-Reason` | UUID of a valid `ext:ReasonCode` (required when `ENABLE_REQUEST_REASON_CHECK=true`) |
 
 **Response:** Returns 202 with job ID. The job processes asynchronously.
