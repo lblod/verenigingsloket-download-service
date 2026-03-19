@@ -250,7 +250,7 @@ app.post('/jobs', async function (req, res) {
  * SENSITIVE DATA ENDPOINT
  * Creates spreadsheet with representatives (sensitive data)
  * Requires authenticated session with mu-session-id header
- * Requires valid role (verenigingen-beheerder or verenigingen-lezer)
+ * Requires valid role (verenigingen-beheerder)
  * Requires X-Request-Reason header with valid ReasonCode UUID
  *****/
 app.post('/sensitive-data-jobs', async function (req, res) {
