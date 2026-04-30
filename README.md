@@ -84,8 +84,6 @@ Alternatively, if you have it set up within a semantic.works stack, you can use 
 | `SCOPE` | OAuth scope for API authentication | - |
 | `AUD` | OAuth audience for API authentication | - |
 | `AUTH_DOMAIN` | OAuth authentication domain | `authenticatie.vlaanderen.be` |
-| `ENVIRONMENT` | Environment mode (`DEV` or `PROD`) | `DEV` |
-| `AUTHORIZATION_KEY` | Basic auth key for DEV environment | - |
 
 ### Authorization Configuration
 
@@ -120,10 +118,9 @@ services:
       CLIENT_ID: "your-client-id"
       SCOPE: "your-scope"
       AUD: "your-audience"
-      ENVIRONMENT: "PROD"
       ENABLE_REQUEST_REASON_CHECK: "true"
     volumes:
-      - ./config/verenigingsloket-download:/config  # For JWT keys in PROD
+      - ./config/verenigingsloket-download:/config  # For JWT signing keys (.pem)
 ```
 
 ### Required Data for Authorization
