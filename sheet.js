@@ -96,6 +96,8 @@ const createSheet = async (
         Voornaam: el.voornaam,
         Achternaam: el.achternaam,
         Email: el.email,
+        "Mobiel nummer": el.mobiel,
+        Telefoonnummer: el.telefoon,
         Websites: el.websites,
         Socials: el.socials,
         Naam: el.naam,
