@@ -4,6 +4,7 @@ import { SHARE_FOLDER,
          CRON_PATTERN_SPREADSHEET_JOB,
          CRON_PATTERN_CLEANUP_JOB,
          CLEANUP_MAX_AGE_DAYS,
+         USE_API_FOR_REPRESENTATIVES,
        } from './env-config';
 import {
   getAllAssociations,
@@ -32,6 +33,7 @@ import {
   validateRequestReason,
   logDataAccess,
 } from './lib/authorization.js'
+import { getClientIdFromSessionId } from './lib/authenticator.js'
 
 app.use(bodyParser.json())
 
@@ -96,7 +98,7 @@ async function createSpreadSheet (associationIds) {
   return filePath
 }
 
-async function createSensitiveDataSpreadSheet (associationIds, accountUuid, sessionId) {
+async function createSensitiveDataSpreadSheet (associationIds, accountUuid, clientId) {
   const graph = `http://mu.semte.ch/graphs/organizations`
   const chunkSize = parseInt(process.env.CHUNK_SIZE, 100) || 100
   const associationIdChunks = splitArrayIntoChunks(associationIds, chunkSize)
@@ -109,7 +111,7 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, sess
     const [associations, locations, representatives] = await Promise.all([
       queryAssociations(chunk, graph),
       queryLocations(chunk, graph),
-      queryRepresentatives(chunk, graph, sessionId),
+      queryRepresentatives(chunk, graph, clientId),
     ])
 
     if (associations) allAssociations.push(...associations)
@@ -252,6 +254,8 @@ app.post('/jobs', async function (req, res) {
  * Requires authenticated session with mu-session-id header
  * Requires valid role (verenigingen-beheerder)
  * Requires X-Request-Reason header with valid ReasonCode UUID
+ * Requires a MAGDA client linked to the administrative unit of the session
+ * (only when USE_API_FOR_REPRESENTATIVES is enabled)
  *****/
 app.post('/sensitive-data-jobs', async function (req, res) {
   let sessionData = { accountUuid: null, adminUnit: null, person: null };
@@ -317,12 +321,33 @@ app.post('/sensitive-data-jobs', async function (req, res) {
       return res.status(400).json({ error: reasonValidation.detail });
     }
 
-    // 5. Create job record (status: busy)
+    // 5. Resolve the MAGDA client of the administrative unit once, up front.
+    // Only needed when representatives are fetched from the API. The job runs
+    // asynchronously and must not depend on the session afterwards: a logout or
+    // a new login on the same session would stop a running export.
+    let clientId = null;
+    if (USE_API_FOR_REPRESENTATIVES) {
+      try {
+        clientId = await getClientIdFromSessionId(sessionId);
+      } catch (error) {
+        await logDataAccess({
+          resourceUri: null,
+          reasonUri: reasonValidation.reasonUri,
+          person,
+          adminUnit,
+          success: false,
+          error: error.message,
+        });
+        return res.status(403).json({ error: error.message });
+      }
+    }
+
+    // 6. Create job record (status: busy)
     const jobResult = await createJob(accountUuid);
     jobUri = jobResult.jobUri;
     const jobUuid = jobResult.jobUuid;
 
-    // 6. Log successful authorization (job created)
+    // 7. Log successful authorization (job created)
     await logDataAccess({
       resourceUri: jobUri,
       reasonUri: reasonValidation.reasonUri,
@@ -332,15 +357,15 @@ app.post('/sensitive-data-jobs', async function (req, res) {
       error: null,
     });
 
-    // 7. Return job info immediately (async processing)
+    // 8. Return job info immediately (async processing)
     res.status(202).json({
       jobId: jobUuid,
       status: 'busy',
       message: 'Sensitive data spreadsheet creation started',
     });
 
-    // 8. Process asynchronously
-    processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, sessionId);
+    // 9. Process asynchronously
+    processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, clientId);
   } catch (error) {
     console.error('Error creating sensitive data job:', error);
 
@@ -361,7 +386,7 @@ app.post('/sensitive-data-jobs', async function (req, res) {
   }
 })
 
-async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, sessionId) {
+async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, clientId) {
   const timestamp = new Date().toISOString();
   console.log(`Processing sensitive data job ${jobUuid} at ${timestamp}`);
 
@@ -379,7 +404,7 @@ async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, 
     console.log(`Found ${associationIds.length} associations for job ${jobUuid}`);
 
     // 2. Create spreadsheet WITH representatives
-    const { fileUri } = await createSensitiveDataSpreadSheet(associationIds, accountUuid, sessionId);
+    const { fileUri } = await createSensitiveDataSpreadSheet(associationIds, accountUuid, clientId);
 
     // 3. Update job status to success with file reference
     await updateJobStatus(jobUri, accountUuid, 'success', fileUri);

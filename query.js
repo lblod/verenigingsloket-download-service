@@ -158,7 +158,7 @@ export async function getVCodesForAssociations(associationIds, graph) {
 }
 
 // API-based representatives query
-export const queryRepresentativesAPI = async (associationIds, graph, sessionId) => {
+export const queryRepresentativesAPI = async (associationIds, graph, clientId) => {
   if (!associationIds || associationIds.length === 0) return [];
 
   // Step 1: Get vCodes for the association UUIDs
@@ -175,16 +175,16 @@ export const queryRepresentativesAPI = async (associationIds, graph, sessionId) 
   console.log(`Found ${vCodes.length} vCodes for ${associationIds.length} associations`);
 
   // Step 2: Fetch from API
-  const apiResponses = await fetchAssociationsFromAPI(vCodes, sessionId);
+  const apiResponses = await fetchAssociationsFromAPI(vCodes, clientId);
 
   // Step 3: Map to expected format
   return mapApiResponseToRepresentatives(apiResponses);
 }
 
 // Main function with feature flag
-export const queryRepresentatives = async (associationIds, graph, sessionId) => {
+export const queryRepresentatives = async (associationIds, graph, clientId) => {
   if (USE_API_FOR_REPRESENTATIVES) {
-    return queryRepresentativesAPI(associationIds, graph, sessionId);
+    return queryRepresentativesAPI(associationIds, graph, clientId);
   }
   return queryRepresentativesSPARQL(associationIds, graph);
 }
