@@ -31,7 +31,7 @@ Creates a spreadsheet export including sensitive data (representatives). Require
 | `mu-auth-allowed-groups` | JSON array of user roles (must include `verenigingen-beheerder`) |
 | `X-Request-Reason` | UUID of a valid `ext:ReasonCode` (required when `ENABLE_REQUEST_REASON_CHECK=true`) |
 
-**Response:** Returns 202 with job ID. The job processes asynchronously. The MAGDA client of the administrative unit is resolved when the job is created, so a running export is not affected by a logout or a new login.
+**Response:** Returns 202 with job ID. The job processes asynchronously. When `USE_API_FOR_REPRESENTATIVES` is enabled, the MAGDA client of the administrative unit is resolved when the job is created, so a running export is not affected by a logout or a new login.
 
 ```bash
 curl -X POST http://localhost/sensitive-data-jobs \
@@ -46,7 +46,7 @@ Alternatively, if you have it set up within a semantic.works stack, you can use 
 |--------|-----------|
 | 401 | Missing or invalid session |
 | 403 | Missing required role |
-| 403 | No MAGDA client linked to the administrative unit of the session |
+| 403 | No MAGDA client linked to the administrative unit of the session (only when `USE_API_FOR_REPRESENTATIVES` is enabled) |
 | 400 | Missing or invalid X-Request-Reason header |
 
 ## Configuration

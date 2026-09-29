@@ -4,6 +4,7 @@ import { SHARE_FOLDER,
          CRON_PATTERN_SPREADSHEET_JOB,
          CRON_PATTERN_CLEANUP_JOB,
          CLEANUP_MAX_AGE_DAYS,
+         USE_API_FOR_REPRESENTATIVES,
        } from './env-config';
 import {
   getAllAssociations,
@@ -254,6 +255,7 @@ app.post('/jobs', async function (req, res) {
  * Requires valid role (verenigingen-beheerder)
  * Requires X-Request-Reason header with valid ReasonCode UUID
  * Requires a MAGDA client linked to the administrative unit of the session
+ * (only when USE_API_FOR_REPRESENTATIVES is enabled)
  *****/
 app.post('/sensitive-data-jobs', async function (req, res) {
   let sessionData = { accountUuid: null, adminUnit: null, person: null };
@@ -320,21 +322,24 @@ app.post('/sensitive-data-jobs', async function (req, res) {
     }
 
     // 5. Resolve the MAGDA client of the administrative unit once, up front.
-    // The job runs asynchronously and must not depend on the session afterwards:
-    // a logout or a new login on the same session would stop a running export.
-    let clientId;
-    try {
-      clientId = await getClientIdFromSessionId(sessionId);
-    } catch (error) {
-      await logDataAccess({
-        resourceUri: null,
-        reasonUri: reasonValidation.reasonUri,
-        person,
-        adminUnit,
-        success: false,
-        error: error.message,
-      });
-      return res.status(403).json({ error: error.message });
+    // Only needed when representatives are fetched from the API. The job runs
+    // asynchronously and must not depend on the session afterwards: a logout or
+    // a new login on the same session would stop a running export.
+    let clientId = null;
+    if (USE_API_FOR_REPRESENTATIVES) {
+      try {
+        clientId = await getClientIdFromSessionId(sessionId);
+      } catch (error) {
+        await logDataAccess({
+          resourceUri: null,
+          reasonUri: reasonValidation.reasonUri,
+          person,
+          adminUnit,
+          success: false,
+          error: error.message,
+        });
+        return res.status(403).json({ error: error.message });
+      }
     }
 
     // 6. Create job record (status: busy)
