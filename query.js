@@ -158,8 +158,9 @@ export async function getVCodesForAssociations(associationIds, graph) {
 }
 
 // API-based representatives query
+// Returns { representatives, failures }: failures lists the vCodes whose data could not be fetched.
 export const queryRepresentativesAPI = async (associationIds, graph, clientId) => {
-  if (!associationIds || associationIds.length === 0) return [];
+  if (!associationIds || associationIds.length === 0) return { representatives: [], failures: [] };
 
   // Step 1: Get vCodes for the association UUIDs
   const vCodeMappings = await getVCodesForAssociations(associationIds, graph);
@@ -169,16 +170,16 @@ export const queryRepresentativesAPI = async (associationIds, graph, clientId) =
 
   if (vCodes.length === 0) {
     console.warn('No vCodes found for the given associations');
-    return [];
+    return { representatives: [], failures: [] };
   }
 
   console.log(`Found ${vCodes.length} vCodes for ${associationIds.length} associations`);
 
   // Step 2: Fetch from API
-  const apiResponses = await fetchAssociationsFromAPI(vCodes, clientId);
+  const { associations: apiResponses, failures } = await fetchAssociationsFromAPI(vCodes, clientId);
 
   // Step 3: Map to expected format
-  return mapApiResponseToRepresentatives(apiResponses);
+  return { representatives: mapApiResponseToRepresentatives(apiResponses), failures };
 }
 
 // Main function with feature flag
@@ -186,7 +187,7 @@ export const queryRepresentatives = async (associationIds, graph, clientId) => {
   if (USE_API_FOR_REPRESENTATIVES) {
     return queryRepresentativesAPI(associationIds, graph, clientId);
   }
-  return queryRepresentativesSPARQL(associationIds, graph);
+  return { representatives: await queryRepresentativesSPARQL(associationIds, graph), failures: [] };
 }
 
 export async function writeFileToStore(filename, filepath) {

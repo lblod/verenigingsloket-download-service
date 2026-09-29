@@ -28,9 +28,16 @@ const createSheet = async (
   associations = [],
   locations = [],
   representatives = [],
-  { isSensitiveData = false } = {}
+  { isSensitiveData = false, notFetched = [] } = {}
 ) => {
   const workbook = XLSX.utils.book_new()
+
+  // First sheet, so an incomplete export is noticed when the file is opened
+  if (notFetched.length) {
+    console.log(`Create warning sheet for ${notFetched.length} associations that could not be fetched`)
+    const { worksheet, sheetName } = addSheet(notFetched.map(truncateRow), 'Niet opgehaald')
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  }
 
   if (associations.length) {
     console.log('Create associations sheet')

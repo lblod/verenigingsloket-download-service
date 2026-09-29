@@ -31,7 +31,7 @@ Creates a spreadsheet export including sensitive data (representatives). Require
 | `mu-auth-allowed-groups` | JSON array of user roles (must include `verenigingen-beheerder`) |
 | `X-Request-Reason` | UUID of a valid `ext:ReasonCode` (required when `ENABLE_REQUEST_REASON_CHECK=true`) |
 
-**Response:** Returns 202 with job ID. The job processes asynchronously. When `USE_API_FOR_REPRESENTATIVES` is enabled, the MAGDA client of the administrative unit is resolved when the job is created, so a running export is not affected by a logout or a new login.
+**Response:** Returns 202 with job ID. The job processes asynchronously. When `USE_API_FOR_REPRESENTATIVES` is enabled, the MAGDA client of the administrative unit is resolved when the job is created, so a running export is not affected by a logout or a new login. When a vereniging cannot be fetched from the association API after the configured retries, the export is still produced: the file gets a first sheet `Niet opgehaald` listing those verenigingen, and the job keeps status success with a warning in its `error` attribute that names them. When every request of a full batch fails, the API is considered unavailable and the job ends as failed.
 
 ```bash
 curl -X POST http://localhost/sensitive-data-jobs \
@@ -81,6 +81,8 @@ Alternatively, if you have it set up within a semantic.works stack, you can use 
 | `API_URL` | Base URL for the Vlaanderen association API | `https://iv.api.vlaanderen.be/api/v1/organisaties/verenigingen/` |
 | `API_VERSION` | API version | `v1` |
 | `API_CONCURRENT_REQUESTS` | Maximum concurrent API requests | `10` |
+| `API_RETRY_ATTEMPTS` | Total attempts per API call on timeouts, connection errors and 5xx responses (1 = no retry) | `3` |
+| `API_RETRY_DELAY_MS` | Delay before the first retry, doubled after every attempt | `1000` |
 | `CLIENT_ID` | OAuth client ID for API authentication | - |
 | `SCOPE` | OAuth scope for API authentication | - |
 | `AUD` | OAuth audience for API authentication | - |
