@@ -106,9 +106,10 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, clie
   let allAssociations = []
   let allLocations = []
   let allRepresentatives = []
+  const failures = []
 
   for (const chunk of associationIdChunks) {
-    const [associations, locations, representatives] = await Promise.all([
+    const [associations, locations, representativesResult] = await Promise.all([
       queryAssociations(chunk, graph),
       queryLocations(chunk, graph),
       queryRepresentatives(chunk, graph, clientId),
@@ -116,12 +117,22 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, clie
 
     if (associations) allAssociations.push(...associations)
     if (locations) allLocations.push(...locations)
-    if (representatives) allRepresentatives.push(...representatives)
+    if (representativesResult?.representatives) allRepresentatives.push(...representativesResult.representatives)
+    if (representativesResult?.failures) failures.push(...representativesResult.failures)
   }
 
   if (allAssociations.length === 0) {
     throw new Error('No associations found.');
   }
+
+  // Verenigingen whose representatives could not be fetched: listed on a warning sheet
+  // in the file and in the job warning, so the export is never mistaken for complete.
+  const nameByVCode = new Map(allAssociations.map(a => [a.vCode, a.naam]))
+  const notFetched = failures.map(f => ({
+    VCode: f.vCode,
+    Naam: nameByVCode.get(f.vCode) || '',
+    Reden: f.reason,
+  }))
 
   const fileName = `verenigingen-sensitive-export-${uuid()}.xlsx`;
   const filePath = path.join(SHARE_FOLDER, fileName);
@@ -132,7 +143,7 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, clie
     allAssociations,
     allLocations,
     allRepresentatives,
-    { isSensitiveData: true }
+    { isSensitiveData: true, notFetched }
   );
   const endTime = performance.now();
 
@@ -150,7 +161,16 @@ async function createSensitiveDataSpreadSheet (associationIds, accountUuid, clie
   const fileUri = await writeFileToAccountStore('verenigingen-sensitive-export.xlsx', filePath, accountUuid);
   console.log(`Sensitive data file stored in DB with URI: ${fileUri}`);
 
-  return { filePath, fileUri }
+  return { filePath, fileUri, notFetched }
+}
+
+// Warning stored on a successful job whose file misses the representatives of some verenigingen.
+function incompleteExportWarning(notFetched, total) {
+  const shown = notFetched.slice(0, 5).map(row => row.VCode)
+  const rest = notFetched.length - shown.length
+  const list = rest > 0 ? `${shown.join(', ')} en ${rest} andere` : shown.join(', ')
+  return `Onvolledig: de vertegenwoordigers van ${notFetched.length} van de ${total} verenigingen konden niet opgehaald worden (${list}). `
+    + 'Zie het tabblad "Niet opgehaald" in het bestand, of vraag een nieuwe export aan.'
 }
 
 schedule.scheduleJob(CRON_PATTERN_SPREADSHEET_JOB, async function() {
@@ -404,11 +424,16 @@ async function processSensitiveDataJob(jobUri, jobUuid, accountUuid, adminUnit, 
     console.log(`Found ${associationIds.length} associations for job ${jobUuid}`);
 
     // 2. Create spreadsheet WITH representatives
-    const { fileUri } = await createSensitiveDataSpreadSheet(associationIds, accountUuid, clientId);
+    const { fileUri, notFetched } = await createSensitiveDataSpreadSheet(associationIds, accountUuid, clientId);
 
-    // 3. Update job status to success with file reference
-    await updateJobStatus(jobUri, accountUuid, 'success', fileUri);
-    console.log(`Sensitive data job ${jobUuid} completed successfully`);
+    // 3. Update job status to success with file reference; keep a warning when the file is incomplete
+    if (notFetched.length > 0) {
+      await updateJobStatus(jobUri, accountUuid, 'success', fileUri, incompleteExportWarning(notFetched, associationIds.length));
+      console.warn(`Sensitive data job ${jobUuid} completed, but ${notFetched.length} of ${associationIds.length} associations could not be fetched`);
+    } else {
+      await updateJobStatus(jobUri, accountUuid, 'success', fileUri);
+      console.log(`Sensitive data job ${jobUuid} completed successfully`);
+    }
   } catch (error) {
     console.error(`Sensitive data job ${jobUuid} failed:`, error);
     await updateJobStatus(jobUri, accountUuid, 'failed', null, error.message);
